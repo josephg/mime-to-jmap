@@ -66,8 +66,9 @@ int main(int argc, char *argv[]) {
     off_t filelen = ftello(f);
     fseek(f, 0, SEEK_SET);
 
-    char *data = malloc(filelen);
-    fread(data, filelen, 1, f);
+    char *data = xzmalloc(filelen + 1);
+    assert(1 == fread(data, filelen, 1, f));
+    data[filelen] = '\0';
 
     char *j = to_jmap(data);
     if (j == NULL) {

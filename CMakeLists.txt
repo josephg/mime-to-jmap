@@ -28,11 +28,14 @@ set(WASM_LDFLAGS "SHELL:-s TOTAL_MEMORY=50331648 -s EXTRA_EXPORTED_RUNTIME_METHO
 
 target_compile_options(mimer PRIVATE
   "-DHAVE_CONFIG_H"
+#  -O1
+  -g -fsanitize=address -fno-omit-frame-pointer
 #  ${OPT}
 )
 
 target_link_options(mimer PRIVATE
   -fvisibility=hidden
+  -g -fsanitize=address
 #  ${OPT}
 #  ${WASM_LDFLAGS}
 )
