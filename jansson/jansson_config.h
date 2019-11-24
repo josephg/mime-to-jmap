@@ -24,7 +24,7 @@
 #ifdef __cplusplus
 #define JSON_INLINE inline
 #else
-#define JSON_INLINE
+#define JSON_INLINE inline
 #endif
 
 /* If your compiler supports the `long long` type and the strtoll()
@@ -34,7 +34,7 @@
 
 /* If locale.h and localeconv() are available, define to 1,
    otherwise to 0. */
-#define JSON_HAVE_LOCALECONV 0
+#define JSON_HAVE_LOCALECONV 1
 
 /* If __atomic builtins are available they will be used to manage
    reference counts of json_t. */

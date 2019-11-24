@@ -1,0 +1,9 @@
+Makefile
+CMakeFiles
+*.dSYM
+CMakeCache.txt
+.*.swp
+
+
+mimer
+
