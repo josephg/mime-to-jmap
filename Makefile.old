@@ -1,7 +1,7 @@
 OPT=-O2 -flto
 
 CFLAGS= -g -Ijansson -I/usr/local/opt/icu4c/include
-LDFLAGS= -L/usr/local/opt/icu4c/lib
+LDFLAGS= -g -L/usr/local/opt/icu4c/lib
 
 sources = \
 	jmap_mail.c \

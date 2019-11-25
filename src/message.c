@@ -75,7 +75,7 @@
 #include "strarray.h"
 // #include "util.h"
 // #include "xmalloc.h"
-// #include "xstrlcpy.h"
+#include "xstrlcpy.h"
 // #include "strarray.h"
 // #include "ptrarray.h"
 // #include "global.h"

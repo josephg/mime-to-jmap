@@ -4327,8 +4327,7 @@ static void _cyrusmsg_init_partids(struct body *body, const char *part_id)
     }
 }
 
-// The cyrusmsg owns the buf after this.
-int cyrusmsg_from_buf(const struct buf *_buf, struct cyrusmsg **msgptr)
+int cyrusmsg_from_buf(const struct buf *inputBuf, struct cyrusmsg **msgptr)
 {
     struct buf buf = {};
 
@@ -4336,7 +4335,7 @@ int cyrusmsg_from_buf(const struct buf *_buf, struct cyrusmsg **msgptr)
     buf_setcstr(&buf, "Content-Type: message/rfc822\r\n");
     buf_appendcstr(&buf, "\r\n");
 
-    buf_append(&buf, _buf);
+    buf_append(&buf, inputBuf);
 
     /* No more return from here */
     struct body *mybody = xzmalloc(sizeof(struct body));

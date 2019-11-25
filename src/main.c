@@ -36,13 +36,16 @@ void log_warning(const char *fmt, ...)
 EMSCRIPTEN_KEEPALIVE
 __attribute__((__visibility__("default")))
 struct cyrusmsg *msg_parse(const char *mime_text, size_t len) {
-    struct buf *b = buf_new();
+    // struct buf *b = buf_new();
+    struct buf b;
     // fwrite(mime_text, len, 1, stderr);
 
-    buf_init_ro(b, mime_text, len);
+    buf_init_ro(&b, mime_text, len);
 
     struct cyrusmsg *ret;
-    int r = cyrusmsg_from_buf(b, &ret);
+    int r = cyrusmsg_from_buf(&b, &ret);
+    buf_free(&b);
+
     if (r) {
         fprintf(stderr, "Error parsing MIME message %d\n", r);
         if (buf_len(&warn_out)) {
@@ -108,7 +111,7 @@ char *msg_get_attachment_blobid(struct cyrusmsg *msg, int i) {
 
 #ifndef USE_EMSCRIPTEN
 int main(int argc, char *argv[]) {
-    // printf("oh hai\n");
+    // getchar();
 
     // log_warning("oh hai");
 
@@ -141,6 +144,7 @@ int main(int argc, char *argv[]) {
     } while (num_read == 1024);
 
     struct cyrusmsg *msg = msg_parse(buf_base(&buf), buf_len(&buf));
+    buf_free(&buf);
     if (msg == NULL) return 1;
 
     char *json = msg_to_json(msg);
@@ -157,6 +161,7 @@ int main(int argc, char *argv[]) {
 
     msg_free(msg);
 
+    // getchar();
     return 0;
 }
 #endif
