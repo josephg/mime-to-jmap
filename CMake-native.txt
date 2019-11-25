@@ -1,5 +1,5 @@
 # run `rm -rf CMakeCache.txt CMakeFiles` before regenerating
-# Regenerate with `cmake -DCMAKE_BUILD_TYPE=Release .` or `cmake -DCMAKE_BUILD_TYPE=Debug .`
+# Regenerate with `cmake .`
 
 cmake_minimum_required(VERSION 3.10)
 project(mimer VERSION 1.0.0 LANGUAGES C)
@@ -19,21 +19,28 @@ target_include_directories(mimer PRIVATE
   src jansson /usr/local/opt/icu4c/include
 )
 
-set(OPT "-flto -O2")
+set(WASM_OPT "SHELL:-flto -O1 -s WASM_OBJECT_FILES=0 --llvm-lto 1")
 
-set(CMAKE_C_FLAGS_DEBUG "-g -fsanitize=address -fno-omit-frame-pointer")
-set(CMAKE_LD_FLAGS_DEBUG "-g -fsanitize=address")
+set(WASM_CFLAGS "SHELL: -s USE_PTHREADS=1 -DUSE_EMSCRIPTEN")
+set(WASM_LDFLAGS "SHELL:-s TOTAL_MEMORY=50331648 -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")
 
-set(CMAKE_C_FLAGS_RELEASE ${OPT})
-set(CMAKE_LD_FLAGS_RELEASE ${OPT})
-
+#message(${WASM_LDFLAGS})
 
 target_compile_options(mimer PRIVATE
   "-DHAVE_CONFIG_H"
+#  -Oz
+  -g
+ -fsanitize=address -fno-omit-frame-pointer
+#  ${WASM_OPT}
+#  ${WASM_CFLAGS}
 )
 
 target_link_options(mimer PRIVATE
   -fvisibility=hidden
+  -g
+  -fsanitize=address
+#  ${WASM_OPT}
+#  ${WASM_LDFLAGS}
 )
 
 target_link_libraries(mimer

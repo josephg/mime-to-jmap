@@ -4241,9 +4241,11 @@ struct cyrusmsg {
     struct headers *_headers;        /* Parsed part0 headers. Don't free. */
     hash_table *_headers_by_part_id; /* Parsed subpart headers. Don't free. */
     ptrarray_t _headers_mempool;     /* Allocated headers memory */
+
+    struct emailbodies bodies;
 };
 
-static void _cyrusmsg_free(struct cyrusmsg **msgptr)
+void cyrusmsg_fini(struct cyrusmsg **msgptr)
 {
     if (msgptr == NULL || *msgptr == NULL) return;
 
@@ -4264,7 +4266,9 @@ static void _cyrusmsg_free(struct cyrusmsg **msgptr)
         free(hdrs);
     }
     ptrarray_fini(&msg->_headers_mempool);
+    jmap_emailbodies_fini(&msg->bodies);
     free(*msgptr);
+
     *msgptr = NULL;
 }
 
@@ -4323,19 +4327,27 @@ static void _cyrusmsg_init_partids(struct body *body, const char *part_id)
     }
 }
 
-
-static int _cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msgptr)
+// The cyrusmsg owns the buf after this.
+int cyrusmsg_from_buf(const struct buf *_buf, struct cyrusmsg **msgptr)
 {
+    struct buf buf = {};
+
+    // TODO: This prefix shouldn't be needed.
+    buf_setcstr(&buf, "Content-Type: message/rfc822\r\n");
+    buf_appendcstr(&buf, "\r\n");
+
+    buf_append(&buf, _buf);
+
     /* No more return from here */
     struct body *mybody = xzmalloc(sizeof(struct body));
-    struct protstream *pr = prot_readmap(buf_base(buf), buf_len(buf));
+    struct protstream *pr = prot_readmap(buf_base(&buf), buf_len(&buf));
 
     /* Pre-run compliance check */
-    int r = message_copy_strict(pr, /*to*/NULL, buf_len(buf), /*allow_null*/0);
+    int r = message_copy_strict(pr, /*to*/NULL, buf_len(&buf), /*allow_null*/0);
     if (r) goto done;
 
     /* Parse message */
-    /*int*/ r = message_parse_mapped(buf_base(buf), buf_len(buf), mybody);
+    /*int*/ r = message_parse_mapped(buf_base(&buf), buf_len(&buf), mybody);
     if (r || !mybody->subpart) {
         r = IMAP_MESSAGE_BADHEADER;
         goto done;
@@ -4346,10 +4358,16 @@ static int _cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msgptr)
 
     struct cyrusmsg *msg = xzmalloc(sizeof(struct cyrusmsg));
     msg->_mybody = mybody;
+    msg->_mymime = buf; // we'll take care of the buf from here
+
     msg->part0 = mybody->subpart;
     msg->rfc822part = mybody;
-    msg->mime = buf;
+    msg->mime = &msg->_mymime;
     *msgptr = msg;
+
+    r = jmap_emailbodies_extract(mybody->subpart, &msg->bodies);
+    if (r) goto done;
+
 
 done:
     if (pr) prot_free(pr);
@@ -4362,10 +4380,10 @@ done:
 
 static int _cyrusmsg_need_part0(struct cyrusmsg *msg)
 {
-    if (msg->part0)
-        return 0;
-    if (!msg->mr)
-        return IMAP_INTERNAL;
+    // if (msg->part0)
+    //     return 0;
+    // if (!msg->mr)
+    //     return IMAP_INTERNAL;
 
     assert(msg->part0); // EDITED
     // int r = msgrecord_extract_bodystructure(msg->mr, &msg->_mybody);
@@ -4411,12 +4429,12 @@ static int _cyrusmsg_get_headers(struct cyrusmsg *msg,
     int r = _cyrusmsg_need_part0(msg);
     if (r) return r;
     /* Prefetch MIME message */
-    assert(msg->mime);
-    // r = _cyrusmsg_need_mime(msg); // EDITED
-    // if (r) return r;
+    r = _cyrusmsg_need_mime(msg);
+    if (r) return r;
     const struct body *header_part = part ? part : msg->part0;
     struct headers *headers = xmalloc(sizeof(struct headers));
     _headers_init(headers);
+    assert(msg->mime->s);
     _headers_from_mime(msg->mime->s + header_part->header_offset,
                        header_part->header_size, headers);
     if (part && part->part_id)
@@ -4438,8 +4456,8 @@ static json_t * _email_get_header(struct cyrusmsg *msg,
         /* Fetch bodypart */
         int r = _cyrusmsg_need_part0(msg);
         if (r) return json_null();
-        // part = msg->part0;
-        part = msg->part0->subpart;
+        part = msg->part0;
+        // part = msg->part0->subpart;
     }
 
     /* Try to read the header from the parsed body part */
@@ -4582,7 +4600,7 @@ static int _email_get_meta(jmap_req_t *req,
         // if (jmap_wantprop(props, "keywords"))
         //     json_object_set_new(email, "keywords", json_object());
         if (jmap_wantprop(props, "size")) {
-            size_t size = msg->rfc822part->subpart->header_size + msg->rfc822part->subpart->content_size;
+            size_t size = msg->part0->header_size + msg->part0->content_size;
             json_object_set_new(email, "size", json_integer(size));
         }
         if (jmap_wantprop(props, "receivedAt"))
@@ -4611,46 +4629,6 @@ static int _email_get_meta(jmap_req_t *req,
         jmap_set_blobid(&guid, blob_id);
         json_object_set_new(email, "blobId", json_string(blob_id));
     }
-
-    /* threadid */
-    // if (jmap_wantprop(props, "threadId")) {
-    //     bit64 cid;
-    //     r = msgrecord_get_cid(msg->mr, &cid);
-    //     if (r) goto done;
-    //     char thread_id[JMAP_THREADID_SIZE];
-    //     jmap_set_threadid(cid, thread_id);
-    //     json_object_set_new(email, "threadId", json_string(thread_id));
-    // }
-
-    /* mailboxIds */
-    // if (jmap_wantprop(props, "mailboxIds") ||
-    //     jmap_wantprop(props, "addedDates") || jmap_wantprop(props, "removedDates")) {
-    //     json_t *mboxids =
-    //         jmap_wantprop(props, "mailboxIds") ? json_object() : NULL;
-    //     json_t *added =
-    //         jmap_wantprop(props, "addedDates") ? json_object() : NULL;
-    //     json_t *removed =
-    //         jmap_wantprop(props, "removedDates") ? json_object() : NULL;
-    //     json_t *mailboxes = _email_mailboxes(req, email_id);
-
-    //     json_t *val;
-    //     const char *mboxid;
-    //     json_object_foreach(mailboxes, mboxid, val) {
-    //         json_t *exists = json_object_get(val, "added");
-
-    //         if (exists) {
-    //             if (mboxids) json_object_set_new(mboxids, mboxid, json_true());
-    //             if (added) json_object_set(added, mboxid, exists);
-    //         }
-    //         else if (removed) {
-    //             json_object_set(removed, mboxid, json_object_get(val, "removed"));
-    //         }
-    //     }
-    //     json_decref(mailboxes);
-    //     if (mboxids) json_object_set_new(email, "mailboxIds", mboxids);
-    //     if (removed) json_object_set_new(email, "removedDates", removed);
-    //     if (added) json_object_set_new(email, "addedDates", added);
-    // }
 
     /* keywords */
     // if (jmap_wantprop(props, "keywords")) {
@@ -4682,23 +4660,6 @@ static int _email_get_meta(jmap_req_t *req,
     }
 
     /* FastMail-extension properties */
-    // if (jmap_wantprop(props, "trustedSender")) {
-    //     json_t *trusted_sender = NULL;
-    //     int has_trusted_flag = 0;
-    //     r = msgrecord_hasflag(msg->mr, "$IsTrusted", &has_trusted_flag);
-    //     if (r) goto done;
-    //     if (has_trusted_flag) {
-    //         struct buf buf = BUF_INITIALIZER;
-    //         _email_read_annot(req, msg->mr, "/vendor/messagingengine.com/trusted", &buf);
-    //         if (buf_len(&buf)) {
-    //             trusted_sender = json_string(buf_cstring(&buf));
-    //         }
-    //         buf_free(&buf);
-    //     }
-    //     json_object_set_new(email, "trustedSender", trusted_sender ?
-    //             trusted_sender : json_null());
-    // }
-
     // if (jmap_wantprop(props, "spamScore")) {
     //     int r = 0;
     //     struct buf buf = BUF_INITIALIZER;
@@ -5190,7 +5151,8 @@ static int _email_get_bodies(jmap_req_t *req,
                              struct cyrusmsg *msg,
                              json_t *email)
 {
-    struct emailbodies bodies = EMAILBODIES_INITIALIZER;
+    struct emailbodies *bodies = &msg->bodies;
+
     hash_table *props = args->props;
     int r = 0;
 
@@ -5201,12 +5163,8 @@ static int _email_get_bodies(jmap_req_t *req,
     else {
         r = _cyrusmsg_need_part0(msg);
         if (r) return r;
-        part =  msg->part0;
+        part = msg->part0;
     }
-
-    /* Dissect message into its parts */
-    r = jmap_emailbodies_extract(part, &bodies);
-    if (r) goto done;
 
     /* bodyStructure */
     if (jmap_wantprop(props, "bodyStructure")) {
@@ -5221,12 +5179,12 @@ static int _email_get_bodies(jmap_req_t *req,
         int i;
         ptrarray_t parts = PTRARRAY_INITIALIZER;
         if (args->fetch_text_body || args->fetch_all_body) {
-            for (i = 0; i < bodies.textlist.count; i++)
-                ptrarray_append(&parts, ptrarray_nth(&bodies.textlist, i));
+            for (i = 0; i < bodies->textlist.count; i++)
+                ptrarray_append(&parts, ptrarray_nth(&bodies->textlist, i));
         }
         if (args->fetch_html_body || args->fetch_all_body) {
-            for (i = 0; i < bodies.htmllist.count; i++)
-                ptrarray_append(&parts, ptrarray_nth(&bodies.htmllist, i));
+            for (i = 0; i < bodies->htmllist.count; i++)
+                ptrarray_append(&parts, ptrarray_nth(&bodies->htmllist, i));
         }
         if (parts.count) {
             r = _cyrusmsg_need_mime(msg);
@@ -5253,8 +5211,8 @@ static int _email_get_bodies(jmap_req_t *req,
     if (jmap_wantprop(props, "textBody")) {
         json_t *text_body = json_array();
         int i;
-        for (i = 0; i < bodies.textlist.count; i++) {
-            struct body *part = ptrarray_nth(&bodies.textlist, i);
+        for (i = 0; i < bodies->textlist.count; i++) {
+            struct body *part = ptrarray_nth(&bodies->textlist, i);
             json_array_append_new(text_body,
                     _email_get_bodypart(req, args, msg, part));
         }
@@ -5265,8 +5223,8 @@ static int _email_get_bodies(jmap_req_t *req,
     if (jmap_wantprop(props, "htmlBody")) {
         json_t *html_body = json_array();
         int i;
-        for (i = 0; i < bodies.htmllist.count; i++) {
-            struct body *part = ptrarray_nth(&bodies.htmllist, i);
+        for (i = 0; i < bodies->htmllist.count; i++) {
+            struct body *part = ptrarray_nth(&bodies->htmllist, i);
             json_array_append_new(html_body,
                     _email_get_bodypart(req, args, msg, part));
         }
@@ -5277,8 +5235,8 @@ static int _email_get_bodies(jmap_req_t *req,
     if (jmap_wantprop(props, "attachments")) {
         json_t *attachments = json_array();
         int i;
-        for (i = 0; i < bodies.attslist.count; i++) {
-            struct body *part = ptrarray_nth(&bodies.attslist, i);
+        for (i = 0; i < bodies->attslist.count; i++) {
+            struct body *part = ptrarray_nth(&bodies->attslist, i);
             json_array_append_new(attachments,
                     _email_get_bodypart(req, args, msg, part));
         }
@@ -5289,8 +5247,8 @@ static int _email_get_bodies(jmap_req_t *req,
     // if (jmap_wantprop(props, "calendarEvents")) {
     //     json_t *calendar_events = json_object();
     //     int i;
-    //     for (i = 0; i < bodies.attslist.count; i++) {
-    //         struct body *part = ptrarray_nth(&bodies.attslist, i);
+    //     for (i = 0; i < bodies->attslist.count; i++) {
+    //         struct body *part = ptrarray_nth(&bodies->attslist, i);
     //         /* Process text/calendar attachments and files ending with .ics */
     //         if (strcmp(part->type, "TEXT") || strcmp(part->subtype, "CALENDAR")) {
     //             int has_ics_attachment = 0;
@@ -5343,7 +5301,7 @@ static int _email_get_bodies(jmap_req_t *req,
             // msgrecord_hasflag(msg->mr, JMAP_HAS_ATTACHMENT_FLAG, &has_att);
         }
         else {
-            has_att = bodies.attslist.count > 0;
+            has_att = bodies->attslist.count > 0;
         }
         json_object_set_new(email, "hasAttachment", json_boolean(has_att));
     }
@@ -5359,9 +5317,9 @@ static int _email_get_bodies(jmap_req_t *req,
             r = _cyrusmsg_need_mime(msg);
             if (r) goto done;
             /* TODO optimise for up to PREVIEW_LEN bytes */
-            char *text = _emailbodies_to_plain(&bodies, msg->mime);
+            char *text = _emailbodies_to_plain(bodies, msg->mime);
             if (!text) {
-                char *html = _emailbodies_to_html(&bodies, msg->mime);
+                char *html = _emailbodies_to_html(bodies, msg->mime);
                 if (html) text = _html_to_plain(html);
                 free(html);
             }
@@ -5376,7 +5334,6 @@ static int _email_get_bodies(jmap_req_t *req,
     }
 
 done:
-    jmap_emailbodies_fini(&bodies);
     return r;
 }
 
@@ -5405,57 +5362,75 @@ done:
 }
 
 
-static int _email_from_buf(/*jmap_req_t*/ void *req,
-                           struct email_getargs *args,
-                           const struct buf *buf,
-                           const char *encoding,
-                           json_t **emailptr)
-{
-    struct buf mybuf = BUF_INITIALIZER;
-    buf_setcstr(&mybuf, "Content-Type: message/rfc822\r\n");
-    if (encoding) {
-        if (!strcasecmp(encoding, "BASE64")) {
-            char *tmp = NULL;
-            size_t tmp_size = 0;
-            charset_decode_mimebody(buf_base(buf), buf_len(buf),
-                    ENCODING_BASE64, &tmp, &tmp_size);
-            buf_appendcstr(&mybuf, "Content-Transfer-Encoding: binary\r\n");
-            /* Append base64-decoded body */
-            buf_appendcstr(&mybuf, "\r\n");
-            buf_appendmap(&mybuf, tmp, tmp_size);
-            free(tmp);
-        }
-        else {
-            buf_appendcstr(&mybuf, "Content-Transfer-Encoding: ");
-            buf_appendcstr(&mybuf, encoding);
-            buf_appendcstr(&mybuf, "\r\n");
-            /* Append encoded body */
-            buf_appendcstr(&mybuf, "\r\n");
-            buf_append(&mybuf, buf);
-        }
-    }
-    else {
-        /* Append raw body */
-        buf_appendcstr(&mybuf, "\r\n");
-        buf_append(&mybuf, buf);
-    }
+// static int _email_from_buf(/*jmap_req_t*/ void *req,
+//                            struct email_getargs *args,
+//                            const struct buf *buf,
+//                            const char *encoding,
+//                            json_t **emailptr)
+// {
+//     struct buf mybuf = BUF_INITIALIZER;
+//     buf_setcstr(&mybuf, "Content-Type: message/rfc822\r\n");
+//     if (encoding) {
+//         if (!strcasecmp(encoding, "BASE64")) {
+//             char *tmp = NULL;
+//             size_t tmp_size = 0;
+//             charset_decode_mimebody(buf_base(buf), buf_len(buf),
+//                     ENCODING_BASE64, &tmp, &tmp_size);
+//             buf_appendcstr(&mybuf, "Content-Transfer-Encoding: binary\r\n");
+//             /* Append base64-decoded body */
+//             buf_appendcstr(&mybuf, "\r\n");
+//             buf_appendmap(&mybuf, tmp, tmp_size);
+//             free(tmp);
+//         }
+//         else {
+//             buf_appendcstr(&mybuf, "Content-Transfer-Encoding: ");
+//             buf_appendcstr(&mybuf, encoding);
+//             buf_appendcstr(&mybuf, "\r\n");
+//             /* Append encoded body */
+//             buf_appendcstr(&mybuf, "\r\n");
+//             buf_append(&mybuf, buf);
+//         }
+//     }
+//     else {
+//         /* Append raw body */
+//         buf_appendcstr(&mybuf, "\r\n");
+//         buf_append(&mybuf, buf);
+//     }
 
-    struct cyrusmsg *msg = NULL;
-    int r = _cyrusmsg_from_buf(&mybuf, &msg);
-    if (!r) r = _email_from_msg(req, args, msg, emailptr);
-    buf_free(&mybuf);
-    _cyrusmsg_free(&msg);
-    return r;
-}
+//     struct cyrusmsg *msg = NULL;
+//     int r = _cyrusmsg_from_buf(&mybuf, &msg);
+//     if (!r) r = _email_from_msg(req, args, msg, emailptr);
+//     buf_free(&mybuf);
+//     cyrusmsg_fini(&msg);
+//     return r;
+// }
 
-int jmap_email_from_buf(const struct buf *buf,
-                           const char *encoding,
-                           json_t **emailptr) {
+// int cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msg) {
+//     struct buf mybuf = BUF_INITIALIZER;
+//     buf_setcstr(&mybuf, "Content-Type: message/rfc822\r\n");
+//     /* Append raw body */
+//     buf_appendcstr(&mybuf, "\r\n");
+//     buf_append(&mybuf, buf);
 
+//     int r = _cyrusmsg_from_buf(&mybuf, msg);
+//     // buf_free(&mybuf);
+//     // cyrusmsg_fini(&msg);
+
+//     // printf("in range %d\n", ((*msg)->part0->decoded_body >= mybuf.s && (*msg)->part0->decoded_body < (mybuf.s + mybuf.len)));
+//     return r;
+// }
+
+
+
+int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut) {
     struct email_getargs getargs = _EMAIL_GET_ARGS_INITIALIZER;
+
+    // Basically we want everything we might want to store later.
+
     getargs.props = &_email_parse_default_props;
     if (getargs.props->size == 0) {
         _email_init_default_props(getargs.props);
+        hash_insert("headers", (void*)1, getargs.props);
     }
 
     getargs.bodyprops = &_email_get_default_bodyprops;
@@ -5464,6 +5439,45 @@ int jmap_email_from_buf(const struct buf *buf,
     }
 
     getargs.fetch_all_body = 1;
-
-    return _email_from_buf(NULL, &getargs, buf, encoding, emailptr);
+    return _email_from_msg(NULL, &getargs, msg, jsonOut);
 }
+
+int get_attachments_count(struct cyrusmsg *msg) {
+    return msg->bodies.attslist.count;
+}
+
+struct buf get_attachment_nth(struct cyrusmsg *msg, int i) {
+    struct body *part = ptrarray_nth(&msg->bodies.attslist, i);
+    struct buf ret;
+    buf_init_ro(&ret, part->decoded_body, part->decoded_content_size);
+    return ret;
+                    // _email_get_bodypart(req, args, msg, part));
+        // }
+}
+
+// Buf must be at least 42 bytes long. (We write exactly 42 chars into it)
+void get_attachment_nth_blobid(struct cyrusmsg *msg, int i, char *buf) {
+    struct body *part = ptrarray_nth(&msg->bodies.attslist, i);
+    jmap_set_blobid(&part->content_guid, buf);
+}
+
+
+// int jmap_email_from_buf(const struct buf *buf,
+//                            const char *encoding,
+//                            json_t **emailptr) {
+
+//     struct email_getargs getargs = _EMAIL_GET_ARGS_INITIALIZER;
+//     getargs.props = &_email_parse_default_props;
+//     if (getargs.props->size == 0) {
+//         _email_init_default_props(getargs.props);
+//     }
+
+//     getargs.bodyprops = &_email_get_default_bodyprops;
+//     if (getargs.bodyprops->size == 0) {
+//         _email_init_default_props(getargs.bodyprops);
+//     }
+
+//     getargs.fetch_all_body = 1;
+
+//     return _email_from_buf(NULL, &getargs, buf, encoding, emailptr);
+// }

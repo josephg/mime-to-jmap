@@ -1,0 +1,47 @@
+OPT=-O2 -flto
+
+CFLAGS= -g -Ijansson -I/usr/local/opt/icu4c/include
+LDFLAGS= -L/usr/local/opt/icu4c/lib
+
+sources = \
+	jmap_mail.c \
+	jmap_mail_query.c \
+	jmap_api.c \
+	charset.c \
+	util.c \
+	chartable.c \
+	hash.c \
+	strhash.c \
+	stristr.c \
+	xmalloc.c \
+	xsha1.c \
+	mpool.c \
+	strarray.c \
+	ptrarray.c \
+	message.c \
+	message_guid.c \
+	prot.c \
+	imparse.c \
+	msgrecord.c \
+	imapparse.c \
+	rfc822_header.c \
+	times.c \
+	parseaddr.c \
+	htmlchar.c \
+	arrayu64.c \
+	mkgmtime.c \
+	gmtoff_tm.c \
+	mailbox.c \
+	main.c
+
+sources_d = $(patsubst %,src/%,$(sources))
+headers = $(patsubst %.c,%.h,sources_d)
+
+
+#CC=emcc
+CC=clang
+#CC=afl-clang
+
+mimer: $(sources_d)
+	$(CC) -Isrc/ $(CFLAGS) $(LDFLAGS) $(sources_d) jansson/*.c -o mimer -licuuc 
+

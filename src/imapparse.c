@@ -87,177 +87,177 @@ EXPORTED int getword(struct protstream *in, struct buf *buf)
  * Parse an xstring
  * (astring, nstring or string based on type)
  */
-#ifdef HAVE_DECLARE_OPTIMIZE
-EXPORTED int getxstring(struct protstream *pin, struct protstream *pout,
-                        struct buf *buf, enum getxstring_flags flags)
-    __attribute__((optimize("-O3")));
-#endif
-EXPORTED int getxstring(struct protstream *pin, struct protstream *pout,
-                        struct buf *buf, enum getxstring_flags flags)
-{
-    int c;
-    int i;
-    int isnowait;
-    int len;
+// #ifdef HAVE_DECLARE_OPTIMIZE
+// EXPORTED int getxstring(struct protstream *pin, struct protstream *pout,
+//                         struct buf *buf, enum getxstring_flags flags)
+//     __attribute__((optimize("-O3")));
+// #endif
+// EXPORTED int getxstring(struct protstream *pin, struct protstream *pout,
+//                         struct buf *buf, enum getxstring_flags flags)
+// {
+//     int c;
+//     int i;
+//     int isnowait;
+//     int len;
 
-    buf_reset(buf);
+//     buf_reset(buf);
 
-    c = prot_getc(pin);
-    switch (c) {
-    case EOF:
-    case ' ':
-    case '(':
-    case ')':
-    case '\r':
-    case '\n':
-        /* Invalid starting character */
-        goto fail;
+//     c = prot_getc(pin);
+//     switch (c) {
+//     case EOF:
+//     case ' ':
+//     case '(':
+//     case ')':
+//     case '\r':
+//     case '\n':
+//         /* Invalid starting character */
+//         goto fail;
 
-    case '\"':
-        if (!(flags & GXS_QUOTED)) {
-            /* Invalid starting character */
-            goto fail;
-        }
+//     case '\"':
+//         if (!(flags & GXS_QUOTED)) {
+//             /* Invalid starting character */
+//             goto fail;
+//         }
 
-        /*
-         * Quoted-string.  Server is liberal in accepting qspecials
-         * other than double-quote, CR, and LF.
-         */
-        for (;;) {
-            c = prot_getc(pin);
-            if (c == '\\') {
-                c = prot_getc(pin);
-            }
-            else if (c == '\"') {
-                buf_cstring(buf);
-                return prot_getc(pin);
-            }
-            else if (c == EOF || c == '\r' || c == '\n') {
-                buf_cstring(buf);
-                if (c != EOF) prot_ungetc(c, pin);
-                return EOF;
-            }
-            buf_putc(buf, c);
-            if (config_maxquoted && buf_len(buf) > config_maxquoted) {
-                fatal("quoted value too long", EX_IOERR);
-            }
-        }
+//         /*
+//          * Quoted-string.  Server is liberal in accepting qspecials
+//          * other than double-quote, CR, and LF.
+//          */
+//         for (;;) {
+//             c = prot_getc(pin);
+//             if (c == '\\') {
+//                 c = prot_getc(pin);
+//             }
+//             else if (c == '\"') {
+//                 buf_cstring(buf);
+//                 return prot_getc(pin);
+//             }
+//             else if (c == EOF || c == '\r' || c == '\n') {
+//                 buf_cstring(buf);
+//                 if (c != EOF) prot_ungetc(c, pin);
+//                 return EOF;
+//             }
+//             buf_putc(buf, c);
+//             if (config_maxquoted && buf_len(buf) > config_maxquoted) {
+//                 fatal("quoted value too long", EX_IOERR);
+//             }
+//         }
 
-    case '{':
-        if (!(flags & GXS_LITERAL)) {
-            /* Invalid starting character */
-            goto fail;
-        }
+//     case '{':
+//         if (!(flags & GXS_LITERAL)) {
+//             /* Invalid starting character */
+//             goto fail;
+//         }
 
-        /* Literal */
-        isnowait = pin->isclient;
-        buf_reset(buf);
-        c = getint32(pin, &len);
-        if (c == '+') {
-            isnowait++;
-            c = prot_getc(pin);
-        }
-        if (len == -1 || c != '}') {
-            buf_cstring(buf);
-            if (c != EOF) prot_ungetc(c, pin);
-            return EOF;
-        }
-        c = prot_getc(pin);
-        if (c != '\r') {
-            buf_cstring(buf);
-            if (c != EOF) prot_ungetc(c, pin);
-            return EOF;
-        }
-        c = prot_getc(pin);
-        if (c != '\n') {
-            buf_cstring(buf);
-            if (c != EOF) prot_ungetc(c, pin);
-            return EOF;
-        }
+//         /* Literal */
+//         isnowait = pin->isclient;
+//         buf_reset(buf);
+//         c = getint32(pin, &len);
+//         if (c == '+') {
+//             isnowait++;
+//             c = prot_getc(pin);
+//         }
+//         if (len == -1 || c != '}') {
+//             buf_cstring(buf);
+//             if (c != EOF) prot_ungetc(c, pin);
+//             return EOF;
+//         }
+//         c = prot_getc(pin);
+//         if (c != '\r') {
+//             buf_cstring(buf);
+//             if (c != EOF) prot_ungetc(c, pin);
+//             return EOF;
+//         }
+//         c = prot_getc(pin);
+//         if (c != '\n') {
+//             buf_cstring(buf);
+//             if (c != EOF) prot_ungetc(c, pin);
+//             return EOF;
+//         }
 
-        if (!isnowait) {
-            prot_printf(pout, "+ go ahead\r\n");
-            prot_flush(pout);
-        }
-        for (i = 0; i < len; i++) {
-            c = prot_getc(pin);
-            if (c == EOF) {
-                buf_cstring(buf);
-                return EOF;
-            }
-            buf_putc(buf, c);
-        }
-        buf_cstring(buf);
-        /* n.b. we've consumed an exact number of bytes according to the literal, do
-         * not unget anything even if we don't like the literal */
-        if (!(flags & GXS_BINARY) && strlen(buf_cstring(buf)) != (unsigned)buf_len(buf))
-            return EOF; /* Disallow imbedded NUL */
-        return prot_getc(pin);
+//         if (!isnowait) {
+//             prot_printf(pout, "+ go ahead\r\n");
+//             prot_flush(pout);
+//         }
+//         for (i = 0; i < len; i++) {
+//             c = prot_getc(pin);
+//             if (c == EOF) {
+//                 buf_cstring(buf);
+//                 return EOF;
+//             }
+//             buf_putc(buf, c);
+//         }
+//         buf_cstring(buf);
+//         /* n.b. we've consumed an exact number of bytes according to the literal, do
+//          * not unget anything even if we don't like the literal */
+//         if (!(flags & GXS_BINARY) && strlen(buf_cstring(buf)) != (unsigned)buf_len(buf))
+//             return EOF; /* Disallow imbedded NUL */
+//         return prot_getc(pin);
 
-    default:
-        if ((flags & GXS_ATOM)) {
-            /*
-             * Atom -- server is liberal in accepting specials other
-             * than whitespace, parens, or double quotes
-             */
-            for (;;) {
-                if (c == EOF || isspace(c) || c == '(' ||
-                          c == ')' || c == '\"') {
-                    /* gotta handle NIL here too */
-                    if ((flags & GXS_NIL) && buf->len == 3 && !memcmp(buf->s, "NIL", 3))
-                        buf_free(buf);
-                    else
-                        buf_cstring(buf);
-                    return c;
-                }
-                buf_putc(buf, c);
-                c = prot_getc(pin);
-            }
-            /* never gets here */
-        }
-        else if ((flags & GXS_NIL)) {
-            /*
-             * Look carefully for "NIL"
-             */
-            if (c == 'N') {
-                int sep = 0;
-                int matched;
+//     default:
+//         if ((flags & GXS_ATOM)) {
+//             /*
+//              * Atom -- server is liberal in accepting specials other
+//              * than whitespace, parens, or double quotes
+//              */
+//             for (;;) {
+//                 if (c == EOF || isspace(c) || c == '(' ||
+//                           c == ')' || c == '\"') {
+//                     /* gotta handle NIL here too */
+//                     if ((flags & GXS_NIL) && buf->len == 3 && !memcmp(buf->s, "NIL", 3))
+//                         buf_free(buf);
+//                     else
+//                         buf_cstring(buf);
+//                     return c;
+//                 }
+//                 buf_putc(buf, c);
+//                 c = prot_getc(pin);
+//             }
+//             /* never gets here */
+//         }
+//         else if ((flags & GXS_NIL)) {
+//             /*
+//              * Look carefully for "NIL"
+//              */
+//             if (c == 'N') {
+//                 int sep = 0;
+//                 int matched;
 
-                matched = prot_lookahead(pin, "IL", strlen("IL"), &sep);
-                if (matched == strlen("IL") + 1) {
-                    if (isspace(sep) || sep == '(' || sep == ')' || sep == '\"') {
-                        /* found NIL and a separator, consume it */
-                        prot_ungetc(c, pin);
-                        c = getword(pin, buf);
-                        /* indicate NIL with a NULL buf.s pointer */
-                        buf_free(buf);
-                        return c;
-                    }
-                }
-                else if (matched > 0) {
-                    /* partially matched NIL, but not enough buffer to be sure:
-                     * fall back to old behaviour */
-                    prot_ungetc(c, pin);
-                    c = getword(pin, buf);
-                    if (buf->len == 3 && !memcmp(buf->s, "NIL", 3)) {
-                        /* indicated NIL with a NULL buf.s pointer */
-                        buf_free(buf);
-                        return c;
-                    }
-                }
-            }
-        }
-        goto fail;
-    }
+//                 matched = prot_lookahead(pin, "IL", strlen("IL"), &sep);
+//                 if (matched == strlen("IL") + 1) {
+//                     if (isspace(sep) || sep == '(' || sep == ')' || sep == '\"') {
+//                         /* found NIL and a separator, consume it */
+//                         prot_ungetc(c, pin);
+//                         c = getword(pin, buf);
+//                         /* indicate NIL with a NULL buf.s pointer */
+//                         buf_free(buf);
+//                         return c;
+//                     }
+//                 }
+//                 else if (matched > 0) {
+//                     /* partially matched NIL, but not enough buffer to be sure:
+//                      * fall back to old behaviour */
+//                     prot_ungetc(c, pin);
+//                     c = getword(pin, buf);
+//                     if (buf->len == 3 && !memcmp(buf->s, "NIL", 3)) {
+//                         /* indicated NIL with a NULL buf.s pointer */
+//                         buf_free(buf);
+//                         return c;
+//                     }
+//                 }
+//             }
+//         }
+//         goto fail;
+//     }
 
-    /* XXX i think we can never get to this line? */
-    return EOF;
+//     /* XXX i think we can never get to this line? */
+//     return EOF;
 
-fail:
-    buf_cstring(buf);
-    if (c != EOF) prot_ungetc(c, pin);
-    return EOF;
-}
+// fail:
+//     buf_cstring(buf);
+//     if (c != EOF) prot_ungetc(c, pin);
+//     return EOF;
+// }
 
 EXPORTED int getint32(struct protstream *pin, int32_t *num)
 {

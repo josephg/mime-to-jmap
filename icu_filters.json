@@ -1,0 +1,96 @@
+// This file contains filters to make a much smaller libicu to include in wasm
+// builds by cutting down on extraneous icu features we don't use.  (And we're
+// talking 27MB -> 1MB in size savings)
+
+// PYTHONPATH=python python3 -m icutools.databuilder   --mode=gnumake --src_dir=data --filter_file=filters.json > data/rules.mk
+// ICU_DATA_FILTER_FILE=filters.json ./runConfigureICU  MacOSX --enable-static --disable-shared --with-data-packaging=static && gnumake clean && gnumake -j4
+
+// Further size savings possible by disabling ICU features -
+// http://userguide.icu-project.org/packaging
+
+{
+  "strategy": "additive",
+  "featureFilters": {
+    "cnvalias": "include",
+    "normalization": "include",
+    //"conversion_mappings": "include"
+
+    "conversion_mappings": {
+      "whitelist": [
+
+        "UTF-8",
+        "UTF-16",
+        "UTF-16BE",
+        "UTF-16LE",
+        "UTF-32",
+        "UTF-7",
+        "US-ASCII",
+
+        "ISO-8859-1", // AKA Latin-1
+        "ibm-912_P100-1995", // (ISO-8859-2) Latin 2
+        "ibm-913_P100-2000", // (ISO-8859-3) Latin 3
+        "ibm-914_P100-1995", // (ISO-8859-4) Latin 4
+        "ibm-915_P100-1995", // (ISO-8859-5) Cyrillic
+        "ibm-1089_P100-1995", // (ISO-8859-6) Arabic
+        "ibm-9005_X110-2007", // (ISO-8859-7) Greek
+        "ibm-5012_P100-1999", // (ISO-8859-8) Hebrew
+        "ibm-920_P100-1995", // (ISO-8859-9) Latin 5 (turkish)
+        "iso-8859_10-1998", // (ISO-8859-10) 
+        "ibm-921_P100-1995", // (ISO-8859-13)
+        "ibm-923_P100-1998", // (ISO-8859-15) Latin 9 (W Europe - update of latin 1)
+
+        "ibm-943_P15A-2003", // (Shift_JIS) - jp
+
+        "ibm-1383_P110-1999", // (GB2312) - simplified chinese
+        "gb18030", // (GB18030) - simplified chinese - 232kb!
+        "windows-950-2000", // (Big5) - traditional chinese
+
+        "euc-jp-2007", // (EUC-JP) - 100Kb!
+        "windows-936-2000", // GBK. Supercedes gb2312 and superceded by gb18030 in turn. Might be worth adding?
+        "ibm-970_P110_P110-2006_U2", // (EUC-KR) - 133kb!
+
+        //"ibm-1363_P11B-1998", // (cp1363) - large seemingly unused kr charset
+        //"windows-949-2000", // (KSC_5601) - kr apparently superceded by EUC-KR
+
+        "ibm-850_P100-1995", // (IBM850)
+        "ibm-851_P100-1995", // (cp851)
+        "ibm-857_P100-1995", // (IBM857)
+        "ibm-858_P100-1997", // (IBM00858)
+        "ibm-860_P100-1995", // (IBM860)
+        "ibm-861_P100-1995", // (IBM861)
+        "ibm-862_P100-1995", // (IBM862)
+        "ibm-863_P100-1995", // (IBM863)
+        "ibm-864_X110-1999", // (IBM864)
+        "ibm-865_P100-1995", // (IBM865)
+        "ibm-866_P100-1995", // (IBM866)
+        "ibm-868_P100-1995", // (IBM868)
+        "ibm-869_P100-1995", // (IBM869)
+        "ibm-878_P100-1996", // (KOI8-R)
+        "macos-0_2-10.2", // (macintosh)
+        "macos-6_2-10.4", // (x-mac-greek)
+        "macos-7_3-10.2", // (x-mac-cyrillic)
+        "macos-29-10.2", // (x-mac-centraleurroman)
+        "macos-35-10.2", // (x-mac-turkish)
+        "ISO_2022,locale=ja,version=0", // (ISO-2022-JP)
+        "ISO_2022,locale=ja,version=1", // (ISO-2022-JP-1)
+        "ISO_2022,locale=ja,version=2", // (ISO-2022-JP-2)
+        "ISO_2022,locale=ko,version=0", // (ISO-2022-KR)
+
+        "ibm-5346_P100-1998", // windows-1250
+        "ibm-5347_P100-1998",
+        "ibm-5348_P100-1997",
+        "ibm-5349_P100-1998",
+        "ibm-5350_P100-1998",
+        "ibm-9447_P100-2002",
+        "ibm-9448_X100-2005",
+        "ibm-9449_P100-2002",
+        "ibm-5354_P100-1998", // ... windows-1258
+
+      ]
+    }
+
+
+
+
+  }
+}

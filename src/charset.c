@@ -2068,64 +2068,64 @@ EXPORTED char *charset_convert(const char *s, charset_t charset, int flags)
 }
 
 /* Convert from a given charset and encoding into IMAP UTF-7 */
-EXPORTED char *charset_to_imaputf7(const char *msg_base, size_t len, charset_t charset, int encoding)
-{
-    struct convert_rock *input, *tobuffer;
-    char *res;
-    charset_t imaputf7;
+// EXPORTED char *charset_to_imaputf7(const char *msg_base, size_t len, charset_t charset, int encoding)
+// {
+//     struct convert_rock *input, *tobuffer;
+//     char *res;
+//     charset_t imaputf7;
 
-    /* Initialize character set mapping */
-    if (charset == CHARSET_UNKNOWN_CHARSET) return 0;
+//     /* Initialize character set mapping */
+//     if (charset == CHARSET_UNKNOWN_CHARSET) return 0;
 
-    /* check for trivial case */
-    if (len == 0)
-        return xstrdup("");
+//     /* check for trivial case */
+//     if (len == 0)
+//         return xstrdup("");
 
-    /* check if we can convert the whole block at once */
-    if (encoding == ENCODING_NONE)
-        return convert_to_name("imap-mailbox-name", charset, msg_base, len);
+//     /* check if we can convert the whole block at once */
+//     if (encoding == ENCODING_NONE)
+//         return convert_to_name("imap-mailbox-name", charset, msg_base, len);
 
-    /* set up the conversion path */
-    imaputf7 = charset_lookupname("imap-mailbox-name");
-    tobuffer = buffer_init(len);
-    input = convert_init(imaputf7, 0/*to_uni*/, tobuffer);
-    input = convert_init(charset, 1/*to_uni*/, input);
+//     /* set up the conversion path */
+//     imaputf7 = charset_lookupname("imap-mailbox-name");
+//     tobuffer = buffer_init(len);
+//     input = convert_init(imaputf7, 0/*to_uni*/, tobuffer);
+//     input = convert_init(charset, 1/*to_uni*/, input);
 
-    /* choose encoding extraction if needed */
-    switch (encoding) {
-        case ENCODING_NONE:
-            break;
+//     /* choose encoding extraction if needed */
+//     switch (encoding) {
+//         case ENCODING_NONE:
+//             break;
 
-        case ENCODING_QP:
-            input = qp_init(0, input);
-            break;
+//         case ENCODING_QP:
+//             input = qp_init(0, input);
+//             break;
 
-        case ENCODING_BASE64:
-            input = b64_init(input);
-            /* XXX have to have nl-mapping base64 in order to
-             * properly count \n as 2 raw characters
-             */
-            break;
+//         case ENCODING_BASE64:
+//             input = b64_init(input);
+//             /* XXX have to have nl-mapping base64 in order to
+//              * properly count \n as 2 raw characters
+//              */
+//             break;
 
-        default:
-            /* Don't know encoding--nothing can match */
-            convert_free(input);
-            charset_free(&imaputf7);
-            return 0;
-    }
+//         default:
+//             /* Don't know encoding--nothing can match */
+//             convert_free(input);
+//             charset_free(&imaputf7);
+//             return 0;
+//     }
 
-    /* do the conversion */
-    convert_catn(input, msg_base, len);
+//     /* do the conversion */
+//     convert_catn(input, msg_base, len);
 
-    /* extract the result */
-    res = buffer_cstring(tobuffer);
+//     /* extract the result */
+//     res = buffer_cstring(tobuffer);
 
-    /* clean up */
-    convert_free(input);
-    charset_free(&imaputf7);
+//     /* clean up */
+//     convert_free(input);
+//     charset_free(&imaputf7);
 
-    return res;
-}
+//     return res;
+// }
 
 EXPORTED char *charset_utf8_to_searchform(const char *s, int flags)
 {

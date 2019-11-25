@@ -53,9 +53,19 @@
 // #include "json_support.h"
 // #include "msgrecord.h"
 
-int jmap_email_from_buf(const struct buf *buf,
-                           const char *encoding,
-                           json_t **emailptr);
+struct cyrusmsg;
+
+int cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msg);
+void cyrusmsg_fini(struct cyrusmsg **msgptr);
+
+int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut);
+int get_attachments_count(struct cyrusmsg *msg);
+struct buf get_attachment_nth(struct cyrusmsg *msg, int i);
+void get_attachment_nth_blobid(struct cyrusmsg *msg, int i, char *buf);
+
+// int jmap_email_from_buf(const struct buf *buf,
+//                            const char *encoding,
+//                            json_t **emailptr);
 
 // extern int jmap_email_find(jmap_req_t *req, const char *email_id,
 //                            char **mboxnameptr, uint32_t *uidptr);
