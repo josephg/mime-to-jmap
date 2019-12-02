@@ -245,6 +245,7 @@ static void _headers_fini(struct headers *headers) {
 
 static void _headers_put_new(struct headers *headers, json_t *header, int shift)
 {
+    // fprintf(stderr, "HHH %s\n", json_dumps(header, 0));
     const char *name = json_string_value(json_object_get(header, "name"));
 
     if (headers->raw == NULL)
@@ -301,6 +302,7 @@ static int _headers_have(struct headers *headers, const char *name)
 static int _headers_from_mime_cb(const char *key, const char *val, void *_rock)
 {
     struct headers *headers = _rock;
+    // fprintf(stderr, "GOT HEADER '%s' -> '%s'\n", key, val);
     _headers_add_new(headers, json_pack("{s:s s:s}", "name", key, "value", val));
     return 0;
 }
@@ -602,6 +604,10 @@ static struct header_prop *_header_parseprop(const char *s)
         hash_insert("sender", (void*) HEADER_FORM_ADDRESSES, &allowed_header_forms);
         hash_insert("subject", (void*) HEADER_FORM_TEXT, &allowed_header_forms);
         hash_insert("to", (void*) HEADER_FORM_ADDRESSES, &allowed_header_forms);
+
+        // Added because they're missing in cyrus, though keywords is a bit special.
+        hash_insert("keywords", (void*) HEADER_FORM_TEXT, &allowed_header_forms);
+        hash_insert("list-id", (void*) HEADER_FORM_TEXT, &allowed_header_forms);
     }
 
     /* Parse property string into fields */
@@ -5294,41 +5300,27 @@ static int _email_get_bodies(jmap_req_t *req,
 
     /* hasAttachment */
     if (jmap_wantprop(props, "hasAttachment")) {
-        int has_att = 0;
-        if (msg->rfc822part == NULL) {
-            assert(0); // EDITED
-            // msgrecord_hasflag(msg->mr, JMAP_HAS_ATTACHMENT_FLAG, &has_att);
-        }
-        else {
-            has_att = bodies->attslist.count > 0;
-        }
+        int has_att = bodies->attslist.count > 0;
         json_object_set_new(email, "hasAttachment", json_boolean(has_att));
     }
 
     /* preview */
     if (jmap_wantprop(props, "preview")) {
-        // const char *preview_annot = config_getstring(IMAPOPT_JMAP_PREVIEW_ANNOT);
-        if (0 /*preview_annot && msg->rfc822part == NULL*/) { // EDITED
-            // json_t *preview = _email_read_jannot(req, msg->mr, preview_annot, /*structured*/0);
-            // json_object_set_new(email, "preview", preview ? preview : json_string(""));
+        r = _cyrusmsg_need_mime(msg);
+        if (r) goto done;
+        /* TODO optimise for up to PREVIEW_LEN bytes */
+        char *text = _emailbodies_to_plain(bodies, msg->mime);
+        if (!text) {
+            char *html = _emailbodies_to_html(bodies, msg->mime);
+            if (html) text = _html_to_plain(html);
+            free(html);
         }
-        else {
-            r = _cyrusmsg_need_mime(msg);
-            if (r) goto done;
-            /* TODO optimise for up to PREVIEW_LEN bytes */
-            char *text = _emailbodies_to_plain(bodies, msg->mime);
-            if (!text) {
-                char *html = _emailbodies_to_html(bodies, msg->mime);
-                if (html) text = _html_to_plain(html);
-                free(html);
-            }
-            if (text) {
-                size_t len = 200; //config_getint(IMAPOPT_JMAP_PREVIEW_LENGTH); // EDITED
-                char *preview = _email_extract_preview(text, len);
-                json_object_set_new(email, "preview", json_string(preview));
-                free(preview);
-                free(text);
-            }
+        if (text) {
+            size_t len = 200; //config_getint(IMAPOPT_JMAP_PREVIEW_LENGTH); // EDITED
+            char *preview = _email_extract_preview(text, len);
+            json_object_set_new(email, "preview", json_string(preview));
+            free(preview);
+            free(text);
         }
     }
 
@@ -5441,25 +5433,25 @@ int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut) {
     return _email_from_msg(NULL, &getargs, msg, jsonOut);
 }
 
-int get_attachments_count(struct cyrusmsg *msg) {
-    return msg->bodies.attslist.count;
-}
-
-struct buf get_attachment_nth(struct cyrusmsg *msg, int i) {
-    struct body *part = ptrarray_nth(&msg->bodies.attslist, i);
-    struct buf ret;
-    buf_init_ro(&ret, part->decoded_body, part->decoded_content_size);
-    return ret;
-                    // _email_get_bodypart(req, args, msg, part));
-        // }
-}
-
 // Buf must be at least 42 bytes long. (We write exactly 42 chars into it)
-void get_attachment_nth_blobid(struct cyrusmsg *msg, int i, char *buf) {
-    struct body *part = ptrarray_nth(&msg->bodies.attslist, i);
-    jmap_set_blobid(&part->content_guid, buf);
+char *get_attachment_with_blobid(struct cyrusmsg *msg, const char *buf, size_t expected_size) {
+    struct message_guid guid;
+    jmap_get_blobid(buf, &guid);
+    
+    const ptrarray_t *attslist = &msg->bodies.attslist;
+    for (int i = 0; i < attslist->count; i++) {
+        struct body *part = ptrarray_nth(attslist, i);
+        
+        if (message_guid_equal(&part->content_guid, &guid)) {
+            if (part->decoded_content_size != expected_size) {
+                fprintf(stderr, "WARNING: Blob size invalid\n");
+                return NULL;
+            }
+            return part->decoded_body;
+        }
+    }
+    return NULL;
 }
-
 
 // int jmap_email_from_buf(const struct buf *buf,
 //                            const char *encoding,

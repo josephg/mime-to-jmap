@@ -59,9 +59,7 @@ int cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msg);
 void cyrusmsg_fini(struct cyrusmsg **msgptr);
 
 int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut);
-int get_attachments_count(struct cyrusmsg *msg);
-struct buf get_attachment_nth(struct cyrusmsg *msg, int i);
-void get_attachment_nth_blobid(struct cyrusmsg *msg, int i, char *buf);
+char *get_attachment_with_blobid(struct cyrusmsg *msg, const char *buf, size_t expected_size);
 
 // int jmap_email_from_buf(const struct buf *buf,
 //                            const char *encoding,

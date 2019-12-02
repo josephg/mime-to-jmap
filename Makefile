@@ -1338,6 +1338,33 @@ src/xsha1.c.s:
 	$(MAKE) -f CMakeFiles/mimer.dir/build.make CMakeFiles/mimer.dir/src/xsha1.c.s
 .PHONY : src/xsha1.c.s
 
+src/xstrlcpy.o: src/xstrlcpy.c.o
+
+.PHONY : src/xstrlcpy.o
+
+# target to build an object file
+src/xstrlcpy.c.o:
+	$(MAKE) -f CMakeFiles/mimer.dir/build.make CMakeFiles/mimer.dir/src/xstrlcpy.c.o
+.PHONY : src/xstrlcpy.c.o
+
+src/xstrlcpy.i: src/xstrlcpy.c.i
+
+.PHONY : src/xstrlcpy.i
+
+# target to preprocess a source file
+src/xstrlcpy.c.i:
+	$(MAKE) -f CMakeFiles/mimer.dir/build.make CMakeFiles/mimer.dir/src/xstrlcpy.c.i
+.PHONY : src/xstrlcpy.c.i
+
+src/xstrlcpy.s: src/xstrlcpy.c.s
+
+.PHONY : src/xstrlcpy.s
+
+# target to generate assembly for a file
+src/xstrlcpy.c.s:
+	$(MAKE) -f CMakeFiles/mimer.dir/build.make CMakeFiles/mimer.dir/src/xstrlcpy.c.s
+.PHONY : src/xstrlcpy.c.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -1482,6 +1509,9 @@ help:
 	@echo "... src/xsha1.o"
 	@echo "... src/xsha1.i"
 	@echo "... src/xsha1.s"
+	@echo "... src/xstrlcpy.o"
+	@echo "... src/xstrlcpy.i"
+	@echo "... src/xstrlcpy.s"
 .PHONY : help
 
 

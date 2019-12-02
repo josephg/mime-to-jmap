@@ -225,6 +225,7 @@ enum {
 
 #define JMAP_BLOBID_SIZE 42
 extern void jmap_set_blobid(const struct message_guid *guid, char *buf);
+extern int jmap_get_blobid(const char *buf, struct message_guid *guid);
 
 #define JMAP_EMAILID_SIZE 26
 extern void jmap_set_emailid(const struct message_guid *guid, char *buf);

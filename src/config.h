@@ -24,6 +24,8 @@
 #define HAVE_STDINT_H
 #define HAVE_LIBUUID
 
+// Macos
+#define HAVE_STRLCPY 1
 
 #define HAVE_VISIBILITY 1
 

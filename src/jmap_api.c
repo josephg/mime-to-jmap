@@ -1115,6 +1115,17 @@ HIDDEN void jmap_set_blobid(const struct message_guid *guid, char *buf)
     buf[41] = '\0';
 }
 
+HIDDEN int jmap_get_blobid(const char *buf, struct message_guid *guid)
+{
+    guid->status = GUID_NONNULL;
+    if (buf[0] != 'G' || buf[41] != '\0') {
+        return IMAP_INTERNAL; // Not ideal but better than nothing.
+    }
+    return !message_guid_decode(guid, &buf[1]);
+    // memcpy(guid->value, &buf[1], 40);
+    // return 0;
+}
+
 HIDDEN void jmap_set_emailid(const struct message_guid *guid, char *buf)
 {
     buf[0] = 'M';

@@ -84,30 +84,19 @@ char *msg_to_json(struct cyrusmsg *msg) {
     }
 }
 
-EMSCRIPTEN_KEEPALIVE
-int msg_get_attachments_count(struct cyrusmsg *msg) {
-    return get_attachments_count(msg);
-}
 
 EMSCRIPTEN_KEEPALIVE
-const char *msg_get_attachment_nth_buf(struct cyrusmsg *msg, int i) {
-    struct buf a = get_attachment_nth(msg, i);
-    return buf_base(&a);
+char *get_blob_space() {
+    static char blobSpace[42] = {};
+    return blobSpace;
 }
 
+// The blobid should always be a 42 byte long string pulled out of the JSON,
+// including \0.
 EMSCRIPTEN_KEEPALIVE
-size_t msg_get_attachment_nth_len(struct cyrusmsg *msg, int i) {
-    struct buf a = get_attachment_nth(msg, i);
-    return buf_len(&a);
+const char *msg_get_blob(struct cyrusmsg *msg, char *blobId, size_t expectedSize) {
+    return get_attachment_with_blobid(msg, blobId == NULL ? get_blob_space() : blobId, expectedSize);
 }
-
-EMSCRIPTEN_KEEPALIVE
-char *msg_get_attachment_blobid(struct cyrusmsg *msg, int i) {
-    static char buf[42];
-    get_attachment_nth_blobid(msg, i, buf);
-    return buf;
-}
-
 
 #ifndef USE_EMSCRIPTEN
 int main(int argc, char *argv[]) {

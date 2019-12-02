@@ -49,25 +49,24 @@ const to_jmap = mime_content => {
 
   // Ok now get JSON out
   const json_str = Module.ccall('msg_to_json', 'string', ['number'], [msg])
+  const json = JSON.parse(json_str)
 
   // ... And the attachments!
-  const num_attachments = Module._msg_get_attachments_count(msg)
+  const blobid_ptr = Module._get_blob_space();
   const attachments = {}
-  for (let i = 0; i < num_attachments; i++) {
-    const a_base_p = Module._msg_get_attachment_nth_buf(msg, i)
-    const a_len = Module._msg_get_attachment_nth_len(msg, i)
-
-    console.log(a_base_p, a_len)
-
-    const buf = heapToBuf(a_base_p, a_len)
-
-    const blobId = Module.ccall('msg_get_attachment_blobid', 'string', ['number', 'number'], [msg, i])
-    attachments[blobId] = buf
+  for (const {blobId, name, size} of json.attachments) {
+    console.log('blob', blobId, name, size)
+    if (blobId.length !== 41) throw Error('unexpected blob length')
+    const blob_buf = Buffer.from(blobId, 'ascii')
+    Module.HEAPU8.set(blob_buf, blobid_ptr)
+    const blob_ptr = Module._msg_get_blob(msg, null, size);
+    attachments[blobId] = heapToBuf(blob_ptr, size)
+    //console.log(blob_ptr)
   }
 
   Module._msg_free(msg)
 
-  return {json: JSON.parse(json_str), attachments}
+  return {json, attachments}
 }
 
 ready.then(async () => {
@@ -75,13 +74,14 @@ ready.then(async () => {
     const buf = fs.readFileSync(process.argv[i])
     //console.log(JSON.parse(to_jmap(buf)))
     const {json, attachments} = to_jmap(buf)
-    console.log(process.argv[i], json ? json : 'ERROR')
+    console.log(process.argv[i])
+    console.dir(json ? json : 'ERROR', {depth:null})
 
-    for (const {name, blobId, type} of json.attachments) {
-      const data = attachments[blobId]
-      console.log('Got file', name, data.length, 'of type', type)
-      fs.writeFileSync('xx_' + name, data)
-    }
+    // for (const {name, blobId, type} of json.attachments) {
+    //   const data = attachments[blobId]
+    //   console.log('Got file', name, data.length, 'of type', type)
+    //   fs.writeFileSync('xx_' + name, data)
+    // }
   }
 })
 

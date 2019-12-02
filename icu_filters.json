@@ -49,6 +49,7 @@
         "windows-936-2000", // GBK. Supercedes gb2312 and superceded by gb18030 in turn. Might be worth adding?
         "ibm-970_P110_P110-2006_U2", // (EUC-KR) - 133kb!
 
+        //"ibm-1168_P100-2002", // (KOI8-U)
         //"ibm-1363_P11B-1998", // (cp1363) - large seemingly unused kr charset
         //"windows-949-2000", // (KSC_5601) - kr apparently superceded by EUC-KR
 
