@@ -1013,6 +1013,7 @@ static void message_parse_encoding(const char *hdr, char **hdrp)
 static void message_parse_charset(const struct body *body,
                                   int *e_ptr, charset_t *c_ptr)
 {
+    // fprintf(stderr, "message_parse_charset %s\n", body->encoding ? body->encoding : "NULL");
 
     int encoding = ENCODING_NONE;
     charset_t charset = charset_lookupname("US-ASCII");

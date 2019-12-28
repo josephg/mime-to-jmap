@@ -1,6 +1,6 @@
-/* jmap_mail.h -- Routines for handling JMAP mail messages
- *
- * Copyright (c) 1994-2018 Carnegie Mellon University.  All rights reserved.
+ALL versions of the Cyrus IMAP server are covered by the following copyright:
+
+ * Copyright (c) 1994-2016 Carnegie Mellon University.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,47 +38,8 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
  * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- *
- */
 
-#ifndef JMAP_MAIL_H
-#define JMAP_MAIL_H
+If you find this software useful and valuable in your work, we would
+welcome any support you can offer toward continuing this work.
 
-#include <config.h>
-
-#include <jansson.h>
-// #include "hash.h"
-// #include "http_jmap.h"
-// #include "jmap_util.h"
-// #include "json_support.h"
-// #include "msgrecord.h"
-
-struct cyrusmsg;
-
-void init_default_props();
-void free_default_props();
-int cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msg);
-void cyrusmsg_fini(struct cyrusmsg **msgptr);
-
-int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut);
-char *get_attachment_with_blobid(struct cyrusmsg *msg, const char *buf, size_t expected_size);
-
-// int jmap_email_from_buf(const struct buf *buf,
-//                            const char *encoding,
-//                            json_t **emailptr);
-
-// extern int jmap_email_find(jmap_req_t *req, const char *email_id,
-//                            char **mboxnameptr, uint32_t *uidptr);
-// extern int jmap_email_get_with_props(jmap_req_t *req, hash_table *props,
-//                                      msgrecord_t *mr, json_t **msgp);
-
-// extern void jmap_emailsubmission_init(jmap_settings_t *settings);
-// extern void jmap_emailsubmission_capabilities(json_t *jcapabilities);
-
-// extern void jmap_mailbox_init(jmap_settings_t *settings);
-// extern void jmap_mailbox_capabilities(json_t *jcapabilities);
-
-// extern int jmap_mailbox_find_role(jmap_req_t *req, const char *role,
-//                                   char **mboxnameptr, char **uniqueid);
-
-#endif /* JMAP_MAIL_H */
+http://cyrusimap.org/ for information on how to contact us and contributing.

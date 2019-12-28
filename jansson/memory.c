@@ -12,9 +12,10 @@
 #include "jansson.h"
 #include "jansson_private.h"
 
+
 /* C89 allows these to be macros */
-#undef malloc
-#undef free
+// #undef malloc
+// #undef free
 
 /* memory function pointers */
 static json_malloc_t do_malloc = malloc;

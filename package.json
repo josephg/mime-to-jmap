@@ -1,0 +1,12 @@
+{
+  "name": "mime-to-jmap",
+  "version": "1.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": "git@github.com:josephg/mime-to-jmap.git",
+  "author": "Seph Gentle <me@josephg.com>",
+  "license": "MIT",
+  "dependencies": {
+    "libmime": "^4.2.1"
+  }
+}

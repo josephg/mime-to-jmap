@@ -14,6 +14,18 @@
 #include "hashtable.h"
 #include "strbuffer.h"
 
+
+void *_raw_malloc(size_t size);
+void _raw_free(void *ptr);
+
+// #if LEAK_TRACE
+#if 1
+void *_inst_malloc(size_t size);
+#define malloc _inst_malloc
+void _inst_free(void *ptr);
+#define free _inst_free
+#endif
+
 #define container_of(ptr_, type_, member_)  \
     ((type_ *)((char *)ptr_ - offsetof(type_, member_)))
 

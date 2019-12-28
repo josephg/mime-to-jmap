@@ -4105,81 +4105,94 @@ static void _email_getargs_fini(struct email_getargs *args)
 //     return (rock->snoozed != NULL);
 // }
 
-// static void _email_parse_wantheaders(json_t *jprops,
-//                                      struct jmap_parser *parser,
-//                                      const char *prop_name,
-//                                      ptrarray_t *want_headers)
-// {
-//     size_t i;
-//     json_t *jval;
-//     json_array_foreach(jprops, i, jval) {
-//         const char *s = json_string_value(jval);
-//         if (!s || strncmp(s, "header:", 7))
-//             continue;
-//         struct header_prop *hprop;
-//         if ((hprop = _header_parseprop(s))) {
-//             ptrarray_append(want_headers, hprop);
-//         }
-//         else {
-//             jmap_parser_push_index(parser, prop_name, i, s);
-//             jmap_parser_invalid(parser, NULL);
-//             jmap_parser_pop(parser);
-//         }
-//     }
-// }
+static void _email_parse_wantheaders(json_t *jprops,
+                                     struct jmap_parser *parser,
+                                     const char *prop_name,
+                                     ptrarray_t *want_headers)
+{
+    size_t i;
+    json_t *jval;
+    json_array_foreach(jprops, i, jval) {
+        const char *s = json_string_value(jval);
+        if (!s || strncmp(s, "header:", 7))
+            continue;
+        struct header_prop *hprop;
+        if ((hprop = _header_parseprop(s))) {
+            ptrarray_append(want_headers, hprop);
+        }
+        else {
+            jmap_parser_push_index(parser, prop_name, i, s);
+            jmap_parser_invalid(parser, NULL);
+            jmap_parser_pop(parser);
+        }
+    }
+}
 
-static void _email_init_default_props(hash_table *props)
+void init_default_props()
 {
     /* Initialize process-owned default property list */
-    construct_hash_table(props, 32, 0);
-    if (props == &_email_get_default_bodyprops) {
+    if (_email_get_default_bodyprops.size == 0) {
+        construct_hash_table(&_email_get_default_bodyprops, 32, 0);
+
         // [ "partId", "blobId", "size", "name", "type", "charset",
             // "disposition", "cid", "language", "location" ]
-        hash_insert("partId",      (void*)1, props);
-        hash_insert("blobId",      (void*)1, props);
-        hash_insert("size",        (void*)1, props);
-        hash_insert("name",        (void*)1, props);
-        hash_insert("type",        (void*)1, props);
-        hash_insert("charset",     (void*)1, props);
+        hash_insert("partId",      (void*)1, &_email_get_default_bodyprops);
+        hash_insert("blobId",      (void*)1, &_email_get_default_bodyprops);
+        hash_insert("size",        (void*)1, &_email_get_default_bodyprops);
+        hash_insert("name",        (void*)1, &_email_get_default_bodyprops);
+        hash_insert("type",        (void*)1, &_email_get_default_bodyprops);
+        hash_insert("charset",     (void*)1, &_email_get_default_bodyprops);
 
-        hash_insert("disposition", (void*)1, props);
-        hash_insert("cid",         (void*)1, props);
-        hash_insert("language",    (void*)1, props);
-        hash_insert("location",    (void*)1, props);
+        hash_insert("disposition", (void*)1, &_email_get_default_bodyprops);
+        hash_insert("cid",         (void*)1, &_email_get_default_bodyprops);
+        hash_insert("language",    (void*)1, &_email_get_default_bodyprops);
+        hash_insert("location",    (void*)1, &_email_get_default_bodyprops);
     }
-    else {
+
+    if (_email_parse_default_props.size == 0) {
+        construct_hash_table(&_email_parse_default_props, 32, 0);
         // [ "id", "blobId", "threadId", "mailboxIds", "keywords", "size",
         // "receivedAt", "messageId", "inReplyTo", "references", "sender", "from",
         // "to", "cc", "bcc", "replyTo", "subject", "sentAt", "hasAttachment",
         // "preview", "bodyValues", "textBody", "htmlBody", "attachments" ]
 
-        hash_insert("blobId",        (void*)1, props);
-        hash_insert("threadId",      (void*)1, props);
-        hash_insert("mailboxIds",    (void*)1, props);
-        hash_insert("keywords",      (void*)1, props);
-        hash_insert("size",          (void*)1, props);
+        hash_insert("blobId",        (void*)1, &_email_parse_default_props);
+        hash_insert("threadId",      (void*)1, &_email_parse_default_props);
+        hash_insert("mailboxIds",    (void*)1, &_email_parse_default_props);
+        hash_insert("keywords",      (void*)1, &_email_parse_default_props);
+        hash_insert("size",          (void*)1, &_email_parse_default_props);
 
-        hash_insert("receivedAt",    (void*)1, props);
-        hash_insert("messageId",     (void*)1, props);
-        hash_insert("inReplyTo",     (void*)1, props);
-        hash_insert("references",    (void*)1, props);
-        hash_insert("sender",        (void*)1, props);
-        hash_insert("from",          (void*)1, props);
+        hash_insert("receivedAt",    (void*)1, &_email_parse_default_props);
+        hash_insert("messageId",     (void*)1, &_email_parse_default_props);
+        hash_insert("inReplyTo",     (void*)1, &_email_parse_default_props);
+        hash_insert("references",    (void*)1, &_email_parse_default_props);
+        hash_insert("sender",        (void*)1, &_email_parse_default_props);
+        hash_insert("from",          (void*)1, &_email_parse_default_props);
 
-        hash_insert("to",            (void*)1, props);
-        hash_insert("cc",            (void*)1, props);
-        hash_insert("bcc",           (void*)1, props);
-        hash_insert("replyTo",       (void*)1, props);
-        hash_insert("subject",       (void*)1, props);
-        hash_insert("sentAt",        (void*)1, props);
-        hash_insert("hasAttachment", (void*)1, props);
+        hash_insert("to",            (void*)1, &_email_parse_default_props);
+        hash_insert("cc",            (void*)1, &_email_parse_default_props);
+        hash_insert("bcc",           (void*)1, &_email_parse_default_props);
+        hash_insert("replyTo",       (void*)1, &_email_parse_default_props);
+        hash_insert("subject",       (void*)1, &_email_parse_default_props);
+        hash_insert("sentAt",        (void*)1, &_email_parse_default_props);
+        hash_insert("hasAttachment", (void*)1, &_email_parse_default_props);
 
-        hash_insert("preview",       (void*)1, props);
-        hash_insert("bodyValues",    (void*)1, props);
-        hash_insert("textBody",      (void*)1, props);
-        hash_insert("htmlBody",      (void*)1, props);
-        hash_insert("attachments",   (void*)1, props);
+        hash_insert("preview",       (void*)1, &_email_parse_default_props);
+        hash_insert("bodyValues",    (void*)1, &_email_parse_default_props);
+        hash_insert("textBody",      (void*)1, &_email_parse_default_props);
+        hash_insert("htmlBody",      (void*)1, &_email_parse_default_props);
+        hash_insert("attachments",   (void*)1, &_email_parse_default_props);
+
+
+
+        // XXXX REMOVE ME
+        // hash_insert("headers", (void*)1, &_email_get_default_bodyprops);
     }
+}
+
+void free_default_props() {
+    free_hash_table(&_email_get_default_bodyprops, NULL);
+    free_hash_table(&_email_parse_default_props, NULL);
 }
 
 // static int _email_getargs_parse(jmap_req_t *req __attribute__((unused)),
@@ -4362,6 +4375,8 @@ int cyrusmsg_from_buf(const struct buf *inputBuf, struct cyrusmsg **msgptr)
     _cyrusmsg_init_partids(mybody->subpart, NULL);
 
     struct cyrusmsg *msg = xzmalloc(sizeof(struct cyrusmsg));
+    // struct cyrusmsg *msg = malloc(sizeof(struct cyrusmsg));
+    // *msg = (struct cyrusmsg){};
     msg->_mybody = mybody;
     msg->_mymime = buf; // we'll take care of the buf from here
 
@@ -4379,6 +4394,9 @@ done:
     if (r && mybody) {
         message_free_body(mybody);
         free(mybody);
+    }
+    if (r) {
+        buf_free(&buf);
     }
     return r;
 }
@@ -4654,15 +4672,16 @@ static int _email_get_meta(jmap_req_t *req,
     // }
 
     /* receivedAt */
-    if (jmap_wantprop(props, "receivedAt")) {
-        char datestr[RFC3339_DATETIME_MAX];
-        time_t t = 0;
-        // EDITED FIXME
-        // r = msgrecord_get_internaldate(msg->mr, &t);
-        // if (r) goto done;
-        time_to_rfc3339(t, datestr, RFC3339_DATETIME_MAX);
-        json_object_set_new(email, "receivedAt", json_string(datestr));
-    }
+    // We can't actually tell when the email was received from the mail envelope
+    // if (jmap_wantprop(props, "receivedAt")) {
+    //     char datestr[RFC3339_DATETIME_MAX];
+    //     time_t t = 0;
+    //     // EDITED FIXME
+    //     // r = msgrecord_get_internaldate(msg->mr, &t);
+    //     // if (r) goto done;
+    //     time_to_rfc3339(t, datestr, RFC3339_DATETIME_MAX);
+    //     json_object_set_new(email, "receivedAt", json_string(datestr));
+    // }
 
     /* FastMail-extension properties */
     // if (jmap_wantprop(props, "spamScore")) {
@@ -4939,7 +4958,7 @@ static json_t *_email_get_bodypart(jmap_req_t *req,
         }
         json_object_set_new(jbodypart, "name", val ?
                 json_string(val) : json_null());
-        free(val);
+        if (val) free(val);
     }
 
     /* type */
@@ -5088,7 +5107,7 @@ static json_t * _email_get_bodyvalue(struct body *part,
     raw[i] = '\0';
 
     /* Initialize return value */
-    buf_initm(&buf, raw, rawlen);
+    buf_initm(&buf, raw, rawlen + 1);
 
     /* Truncate buffer */
     if (buf_len(&buf) && max_body_bytes && max_body_bytes < buf_len(&buf)) {
@@ -5412,22 +5431,14 @@ done:
 // }
 
 
-
 int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut) {
     struct email_getargs getargs = _EMAIL_GET_ARGS_INITIALIZER;
 
     // Basically we want everything we might want to store later.
 
+    init_default_props();
     getargs.props = &_email_parse_default_props;
-    if (getargs.props->size == 0) {
-        _email_init_default_props(getargs.props);
-        hash_insert("headers", (void*)1, getargs.props);
-    }
-
     getargs.bodyprops = &_email_get_default_bodyprops;
-    if (getargs.bodyprops->size == 0) {
-        _email_init_default_props(getargs.bodyprops);
-    }
 
     getargs.fetch_all_body = 1;
     return _email_from_msg(NULL, &getargs, msg, jsonOut);

@@ -39,8 +39,8 @@ headers = $(patsubst %.c,%.h,sources_d)
 
 
 #CC=emcc
-CC=clang
-#CC=afl-clang
+#CC=clang
+CC=afl-clang
 
 mimer: $(sources_d)
 	$(CC) -Isrc/ $(CFLAGS) $(LDFLAGS) $(sources_d) jansson/*.c -o mimer -licuuc 

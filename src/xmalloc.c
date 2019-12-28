@@ -41,18 +41,66 @@
  */
 
 #include "config.h"
+#undef malloc
+#undef free
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sysexits.h>
+
+#ifndef USE_EMSCRIPTEN
+#include <execinfo.h>
+#else
+#include <emscripten.h>
+#endif
+
 #include "xmalloc.h"
 
+static void print_trace ()
+{
+#if !defined(USE_EMSCRIPTEN) && LEAK_TRACE
+  void *array[10];
+  size_t size;
+  char **strings;
+  size_t i;
+
+  size = backtrace (array, 10);
+  strings = backtrace_symbols (array, size);
+
+//   printf ("Obtained %zd stack frames.\n", size);
+
+  for (i = 1; i < size; i++)
+     fprintf (stderr, "%s\n", strings[i]);
+
+  free (strings);
+#endif
+}
+
+#if LEAK_TRACE
+static size_t numalloc = 0;
+static size_t bytealloc = 0;
+
+struct mem_entry {
+    size_t size;
+    void *ptr;
+};
+static const int num_entries = 10000;
+static int held_used = 0;
+struct mem_entry held[num_entries] = {};
+
+static void _rm_at_idx(int idx) {
+    held[idx] = held[--held_used];
+}
+#endif
 
 EXPORTED void* xmalloc(size_t size)
 {
     void *ret;
-
+#if LEAK_TRACE
+    ret = _inst_malloc(size);
+#else
     ret = malloc(size);
+#endif
     if (ret != NULL) return ret;
 
     fatal("Virtual memory exhausted", EX_TEMPFAIL);
@@ -75,12 +123,36 @@ EXPORTED void *xrealloc (void* ptr, size_t size)
 {
     void *ret;
 
+#if LEAK_TRACE
     /* xrealloc (NULL, size) behaves like xmalloc (size), as in ANSI C */
+    // ret = (!ptr ? malloc (size) : realloc (ptr, size));
+    if (ptr == NULL) return _inst_malloc(size);
+    else {
+        void *base = ptr - sizeof(size_t);
+        size_t old_size = *(size_t *)base;
+        ret = realloc (base, size + sizeof(size_t));
+        *(size_t *)ret = size;
+
+        bytealloc += size - old_size;
+        for (int i = 0; i < held_used; i++) {
+            if (held[i].ptr == base) {
+                held[i].ptr = ret;
+                held[i].size = size;
+            }
+        }
+        // fprintf(stderr, "REALLOC(%zd) %p -> %p\n", size, ptr, ret);
+        
+        if (ret != NULL) return ret + sizeof(size_t);
+
+        fatal("Virtual memory exhausted", EX_TEMPFAIL);
+        return 0; /*NOTREACHED*/
+    }
+#else
     ret = (!ptr ? malloc (size) : realloc (ptr, size));
     if (ret != NULL) return ret;
-
     fatal("Virtual memory exhausted", EX_TEMPFAIL);
     return 0; /*NOTREACHED*/
+#endif
 }
 
 EXPORTED char *xstrdup(const char* str)
@@ -115,4 +187,65 @@ EXPORTED void *xmemdup(const void *ptr, size_t size)
     void *p = xmalloc(size);
     memcpy(p, ptr, size);
     return p;
+}
+
+#if LEAK_TRACE
+void *_inst_malloc(size_t size) {
+    // size_t *ptr = (size_t *)malloc(size + sizeof(size_t));
+    void *ptr = malloc(size + sizeof(size_t));
+    held[held_used++] = (struct mem_entry){size, ptr};
+    numalloc++;
+    bytealloc += size;
+    // fprintf(stderr, "ALLOC(%ld) %zd %zd -> %p\n", size, numalloc, bytealloc, ptr);
+    // fprintf(stderr, "ALLOC(%ld) %zd %zd\n", size, numalloc, bytealloc);
+    print_trace();
+    *(size_t *)ptr = size;
+    // *ptr = size;
+
+    // if (ptr == 0x698a10) __builtin_trap();
+
+    return ptr + sizeof(size_t);
+}
+void _inst_free(void *ptr) {
+    if (ptr == NULL) return;
+
+    ptr -= sizeof(size_t);
+    size_t size = *(size_t *)ptr;
+
+    for (int i = 0; i < held_used; i++) {
+        if (held[i].ptr == ptr) _rm_at_idx(i);
+    }
+
+    // fprintf(stderr, "FREE(%ld) %zd %zd %p -> %ld\n", size, numalloc, bytealloc, ptr, bytealloc - size);
+    // fprintf(stderr, "FREE(%ld) %zd %zd -> %ld\n", size, numalloc, bytealloc, bytealloc - size);
+    free(ptr);
+    print_trace();
+
+    numalloc--;
+    bytealloc -= size;
+}
+
+void *_raw_malloc(size_t size) { return malloc(size); }
+void _raw_free(void *ptr) { free(ptr); }
+
+#endif
+
+EMSCRIPTEN_KEEPALIVE
+int assert_no_leaks() {
+#if LEAK_TRACE
+    if (bytealloc || numalloc) {
+        fprintf(stderr, "MEMORY LEAK DETECTED %ld bytes in %ld ranges\n", bytealloc, numalloc);
+        fprintf(stderr, "leaked zones %d\n", held_used);
+
+        for (int i = 0; i < held_used; i++) {
+            fprintf(stderr, "leaked %zd %p\n", held[i].size, held[i].ptr);
+        }
+
+        return 1;
+    } else return 0;
+    // assert(bytealloc == 0);
+    // assert(numalloc == 0);
+#else
+    return 0;
+#endif
 }

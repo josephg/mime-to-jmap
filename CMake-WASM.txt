@@ -1,5 +1,5 @@
 # run `rm -rf CMakeCache.txt CMakeFiles` before regenerating
-# Regenerate with `cmake .`
+# Regenerate with `emconfigure cmake -DCMAKE_BUILD_TYPE=Debug .`
 
 cmake_minimum_required(VERSION 3.10)
 project(mimer VERSION 1.0.0 LANGUAGES C)
@@ -19,13 +19,16 @@ target_include_directories(mimer PRIVATE
   # src jansson /usr/local/opt/icu4c/include
 )
 
-set(WASM_OPT "-flto -O1 -s WASM_OBJECT_FILES=0 --llvm-lto 1")
+set(WASM_OPT "-flto -O1 -s WASM_OBJECT_FILES=0 --llvm-lto 1 -fvisibility=hidden")
 
 set(WASM_CFLAGS "SHELL:-DUSE_EMSCRIPTEN")
-set(WASM_LDFLAGS "SHELL:-s TOTAL_MEMORY=16777216 -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\"]'")
+set(WASM_LDFLAGS "SHELL:-s TOTAL_MEMORY=64MB -s EXTRA_EXPORTED_RUNTIME_METHODS='[\"ccall\", \"cwrap\", \"UTF8ToString\"]'  -s ALLOW_MEMORY_GROWTH   ")
 
-set(CMAKE_C_FLAGS_DEBUG "-g -s ASSERTIONS=1")
-set(CMAKE_LD_FLAGS_DEBUG "-g -s ASSERTIONS=1")
+set(CMAKE_C_FLAGS_DEBUG "-g -s ASSERTIONS=1 -s EXIT_RUNTIME ")
+set(CMAKE_LD_FLAGS_DEBUG "-g -s ASSERTIONS=1 -s EXIT_RUNTIME ")
+
+# set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_C_FLAGS_DEBUG})
+# set(CMAKE_CXX_FLAGS ${CMAKE_C_FLAGS})
 
 set(CMAKE_C_FLAGS_RELEASE ${WASM_OPT})
 set(CMAKE_LD_FLAGS_RELEASE ${WASM_OPT})
@@ -33,14 +36,13 @@ set(CMAKE_LD_FLAGS_RELEASE ${WASM_OPT})
 target_compile_options(mimer PRIVATE
   "-DHAVE_CONFIG_H"
 #  -Oz
-#  -fsanitize=address -fno-omit-frame-pointer
+#  -fsanitize=address -fno-omit-frame-pointer -fno-common 
 #  ${WASM_OPT}
  ${WASM_CFLAGS}
 )
 
 target_link_options(mimer PRIVATE
-  -fvisibility=hidden
-  # -fsanitize=address
+  # -fsanitize=address -fno-omit-frame-pointer -fno-common 
 #  ${WASM_OPT}
  ${WASM_LDFLAGS}
 )

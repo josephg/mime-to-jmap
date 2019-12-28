@@ -42,11 +42,15 @@
         "ibm-943_P15A-2003", // (Shift_JIS) - jp
 
         "ibm-1383_P110-1999", // (GB2312) - simplified chinese
+
+        "ibm-1386_P100-2001", // needed for windows-936-2000
+        "windows-936-2000", // GBK. Supercedes gb2312 and superceded by gb18030 in turn. Might be worth adding?
+
         "gb18030", // (GB18030) - simplified chinese - 232kb!
+        "ibm-1373-P100-2002", // needed for windows-950
         "windows-950-2000", // (Big5) - traditional chinese
 
         "euc-jp-2007", // (EUC-JP) - 100Kb!
-        "windows-936-2000", // GBK. Supercedes gb2312 and superceded by gb18030 in turn. Might be worth adding?
         "ibm-970_P110_P110-2006_U2", // (EUC-KR) - 133kb!
 
         //"ibm-1168_P100-2002", // (KOI8-U)

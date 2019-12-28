@@ -29,6 +29,8 @@
 
 #define HAVE_VISIBILITY 1
 
+#define LEAK_TRACE 1
+
 #if HAVE_VISIBILITY
 // Ignore the EXPORTED macro since we don't care
 #define EXPORTED //__attribute__((__visibility__("default")))
@@ -44,5 +46,20 @@
 // #define MAX_USER_FLAGS 0
 
 void log_warning(const char *fmt, ...);
+
+#if LEAK_TRACE
+void *_raw_malloc(size_t size);
+void _raw_free(void *ptr);
+
+void *_inst_malloc(size_t size);
+#define malloc _inst_malloc
+void _inst_free(void *ptr);
+#define free _inst_free
+#endif
+
+#ifndef USE_EMSCRIPTEN
+#define EMSCRIPTEN_KEEPALIVE
+#endif
+
 
 #endif

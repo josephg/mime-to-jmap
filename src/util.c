@@ -1019,6 +1019,8 @@ EXPORTED void _buf_ensure(struct buf *buf, size_t n)
 
     assert(newlen); /* we never alloc zero bytes */
 
+    // fprintf(stderr, "_buf_ensure(%zd)\n", newlen);
+
     if (buf->alloc >= newlen)
         return;
 

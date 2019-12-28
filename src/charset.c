@@ -1959,6 +1959,7 @@ done:
  */
 EXPORTED charset_t charset_lookupname(const char *name)
 {
+    // fprintf(stderr, "charset_lookupname %s\n", name);
     int i;
     struct charset_converter *s;
     UErrorCode err;
@@ -1970,6 +1971,7 @@ EXPORTED charset_t charset_lookupname(const char *name)
 
     if (!name) {
         s->num = 0; // us-ascii
+        // fprintf(stderr, "charset_lookupname -> us-ascii\n");
         return s;
     }
 
@@ -1979,6 +1981,7 @@ EXPORTED charset_t charset_lookupname(const char *name)
             !strcasecmp(name, charset_aliases[i].canon_name)) {
             name = charset_aliases[i].canon_name;
             s->name = xstrdup(name);
+            // fprintf(stderr, "alias to %s\n", name);
             break;
         }
     }
@@ -1988,6 +1991,7 @@ EXPORTED charset_t charset_lookupname(const char *name)
         if (!strcasecmp(name, chartables_charset_table[i].name)) {
             if ((chartables_charset_table[i].table) || !strcmp(name, "utf-8")) {
                 s->num = i;
+                // fprintf(stderr, "charset_lookupname -> table\n");
                 return s;
             }
         }
@@ -1998,11 +2002,14 @@ EXPORTED charset_t charset_lookupname(const char *name)
     conv = ucnv_open(name, &err);
     if (U_SUCCESS(err)) {
         s->conv = conv;
+        // fprintf(stderr, "charset_lookupname -> ICU %s\n", name);
         return s;
     }
 
     /* Still here? This means we don't know this charset name */
+    free(s->name);
     free(s);
+    // fprintf(stderr, "charset_lookupname -> UNKNOWN\n");
     return CHARSET_UNKNOWN_CHARSET;
 }
 
@@ -2897,6 +2904,8 @@ EXPORTED const char *charset_decode_mimebody(const char *msg_base, size_t len, i
 
     *decbuf = NULL;
     *outlen = 0;
+
+    // fprintf(stderr, "xxx-encoding %d\n", encoding);
 
     switch (encoding) {
     case ENCODING_NONE:

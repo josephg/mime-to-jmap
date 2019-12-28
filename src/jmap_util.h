@@ -53,8 +53,8 @@
 #define JMAP_SUBMISSION_HDR "Content-Description"
 
 #define jmap_wantprop(props, name) \
-    ((props) ? (hash_lookup(name, props) != NULL) : 1)
-    // 1
+    1
+    // ((props) ? (hash_lookup(name, props) != NULL) : 1)
 
 #define jmap_readprop(root, name,  mandatory, invalid, fmt, dst) \
     jmap_readprop_full((root), NULL, (name), (mandatory), (invalid), (fmt), (dst))
