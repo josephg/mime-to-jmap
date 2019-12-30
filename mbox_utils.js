@@ -1,7 +1,6 @@
-const assert = require('assert')
-const fs = require('fs')
-const {envelope_to_jmap, ready} = require('./index.js')
-
+const assert = (cond, str) => {
+  if (!cond) throw Error(str || 'assertion failed')
+}
 
 async function* mbox_each_progress(readable) {
   // We're scanning for the byte range '\nFrom ', which is [0a 46 72 6f 6d 20].
@@ -188,55 +187,3 @@ async function *mbox_each(stream) {
 }
 
 module.exports = {mbox_each, mbox_each_progress, mbox_to_eml}
-
-if (require.main === module) {
-//   const t = s => trimFromPatterns(Buffer.from(s, 'utf-8'), 0).toString()
-
-//   console.log(t(`
-// >From asdf
-// >>>From asdf
-
-// abc>From xyz
-// >From asdf`))
-
-
-  ;(async () => {
-    process.on('unhandledRejection', e => {
-      throw e
-    })
-
-    await ready
-
-    const cliprogress = require('cli-progress')
-
-    const filename = process.argv[2] || 'testcases/devtest.mbox'
-    const {size} = fs.statSync(filename)
-
-    const bar = new cliprogress.SingleBar({fps: 1}, cliprogress.Presets.shades_classic)
-    const iter = mbox_each_progress(fs.createReadStream(filename, {
-      // encoding: 'utf8'
-    }))
-
-    bar.start(size, 0)
-
-    let num = 0
-    for await (const {msg, progress} of iter) {
-      const {body} = mbox_to_eml(msg)
-      envelope_to_jmap(body, false)
-      
-      bar.update(progress)
-      // num++
-
-      // if (num >= 3000) break
-      // console.log(msg.length)
-      // console.log('--------------------\n' + msg.toString() + '\n-------')
-      // process_message(msg)
-    }
-    bar.stop()
-  })()
-}
-
-// console.log(process.argv)
-// chunkMBox(fs.createReadStream(process.argv[2] || 'testcases/devtest.mbox', {
-//   encoding: 'utf8'
-// }))

@@ -90,31 +90,3 @@ module.exports = {
   envelope_to_jmap,
   ...require('./mbox_utils')
 }
-
-if (require.main === module) {
-  ready.then(async () => {
-    for (let i = 2; i < process.argv.length; i++) {
-      const buf = fs.readFileSync(process.argv[i])
-      //console.log(JSON.parse(to_jmap(buf)))
-
-      for (let iter = 0; iter < 1; iter++) {
-        const {json, attachments} = envelope_to_jmap(buf)
-        // console.log(process.argv[i])
-        // Module._leak_check()
-        console.dir(json)
-      }
-      // console.dir(json ? json : 'ERROR', {depth:null})
-  
-      // for (const {name, blobId, type} of json.attachments) {
-      //   const data = attachments[blobId]
-      //   console.log('Got file', name, data.length, 'of type', type)
-      //   fs.writeFileSync('xx_' + name, data)
-      // }
-    }
-  })
-}
-
-// process.on('exit', () => {
-//   // console.log('leak check')
-//   // Module._leak_check()
-// })

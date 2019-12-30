@@ -14,9 +14,10 @@ process.on('unhandledRejection', e => {
   for await (const msg of mbox_each(stream)) {
     const {body, mboxFromAddress, receivedAt} = mbox_to_eml(msg)
     const {json} = envelope_to_jmap(body)
+
+    json.receivedAt = receivedAt
     
     console.log('Email', mboxFromAddress, 'from', json.from[0].name, 'subject', json.subject)
   }
 })()
-
 
