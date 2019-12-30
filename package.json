@@ -8,5 +8,8 @@
   "license": "MIT",
   "dependencies": {
     "libmime": "^4.2.1"
+  },
+  "optionalDependencies": {
+    "cli-progress": "^3.4.0"
   }
 }

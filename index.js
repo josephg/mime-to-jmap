@@ -19,30 +19,9 @@ const ready = new Promise((resolve) => {
 function _arrayToHeap(jsbuf){
   const numBytes = jsbuf.length
   const ptr = Module._malloc(numBytes);
-
   Module.HEAPU8.set(typeof jsbuf === 'string' ? Buffer.from(jsbuf, 'ascii') : jsbuf, ptr)
-
-//  const heapBytes = new Uint8Array(Module.HEAPU8.buffer, ptr, numBytes);
-//  console.log('buffer size', jsbuf.length)
-//  heapBytes.set(new Uint8Array(jsbuf.buffer));
   return ptr
 }
-
-function _freeArray(ptr){
-  Module._free(ptr)
-  
-//  Module._free(heapBytes.byteOffset);
-}
-
-/*
-const to_jmap = (mime_content) => {
-  const ptr = _arrayToHeap(mime_content);
-  const ret = Module.ccall('to_jmap', 'string', ['number','number'],
-    [ptr, mime_content.length]);
-  _freeArray(ptr);
-  return ret;
-};
-*/
 
 const heapToBuf = (base, len) => {
   const buf_slice = Buffer.from(Module.HEAPU8.buffer, base, len)
@@ -106,43 +85,10 @@ const envelope_to_jmap = (mime_content, with_attachments) => {
   return {json, attachments}
 }
 
-const splitFirst = (s, pattern) => {
-  const idx = s.indexOf(pattern)
-  if (idx < 0) return [s]
-  else return [s.slice(0, idx), s.slice(idx + 1)]
-}
-
-const mbox_message_to_jmap = (mbox_str, with_attachments) => {
-  // The mbox string always starts with 'From '
-  assert(mbox_str.startsWith('From '), 'mbox message does not start with from line')
-
-  // Find the first line
-  const end_line_1 = mbox_str.indexOf('\n') // Its actually /r/n but this is fine.
-  assert(end_line_1 > 0)
-  const line_1 = mbox_str.slice(0, end_line_1 - 1) // ignore the '\r' as well.
-
-  // The first line is 'From <id> <servertime>'. There are no spaces in the id.
-  const id_and_time = line_1.slice('From '.length).toString('ascii')
-  const [mboxFromAddress, time_str] = splitFirst(id_and_time, ' ')
-  const receivedAt = (new Date(time_str)).toISOString()
-
-  const start_line_2 = mbox_str.slice(end_line_1 + 1)
-
-  // Now we need to find \r\n>*From and remove one of the > characters
-  const msg_str = typeof start_line_2 === 'string' ? start_line_2 : start_line_2.toString('ascii')
-  const msg_str_sub = msg_str.replace(/^>(>*From )/mg, '$1')
-  const {json, attachments} = envelope_to_jmap(msg_str_sub, with_attachments)
-
-  json.receivedAt = receivedAt
-
-  // For gmail, the mbox from address contains the ID of the message itself.
-  return {mboxFromAddress, json, attachments}
-}
-
 module.exports = {
   ready,
   envelope_to_jmap,
-  mbox_message_to_jmap,
+  ...require('./mbox_utils')
 }
 
 if (require.main === module) {
@@ -167,7 +113,7 @@ if (require.main === module) {
   })
 }
 
-process.on('exit', () => {
-  console.log('leak check')
-  // Module._leak_check()
-})
+// process.on('exit', () => {
+//   // console.log('leak check')
+//   // Module._leak_check()
+// })
