@@ -29,7 +29,9 @@
 
 #define HAVE_VISIBILITY 1
 
+#ifdef DEBUG
 #define LEAK_TRACE 1
+#endif
 
 #if HAVE_VISIBILITY
 // Ignore the EXPORTED macro since we don't care

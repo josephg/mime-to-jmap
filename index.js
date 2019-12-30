@@ -2,7 +2,8 @@ const fs = require('fs')
 const crypto = require('crypto')
 const Module = require("./mimer.js")
 // Module['ASAN_OPTIONS'] = 'detect_stack_use_after_return=1'
-Module['ASAN_OPTIONS'] = 'detect_leaks=1,print_stats=1,verbose=1,atexit=1'
+// Module['ASAN_OPTIONS'] = 'detect_leaks=1,print_stats=1,verbose=1,atexit=1'
+Module['ASAN_OPTIONS'] = 'print_stats=1'
 //const to_jmap = Module.cwrap('to_jmap', 'string', ['string'])
 
 //console.log(process.argv)

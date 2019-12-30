@@ -18,8 +18,13 @@
 void *_raw_malloc(size_t size);
 void _raw_free(void *ptr);
 
+
+#ifdef DEBUG
+#define LEAK_TRACE 1
+#endif
+
 // #if LEAK_TRACE
-#if 1
+#if LEAK_TRACE
 void *_inst_malloc(size_t size);
 #define malloc _inst_malloc
 void _inst_free(void *ptr);
