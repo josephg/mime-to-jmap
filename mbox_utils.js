@@ -181,7 +181,7 @@ const mbox_to_eml = (mbox_buf) => {
   return {body, mboxFromAddress, receivedAt}
 }
 
-function *mbox_each(stream) {
+async function *mbox_each(stream) {
   for await (const {msg} of mbox_each_progress(stream)) {
     yield msg
   }
@@ -209,7 +209,7 @@ if (require.main === module) {
 
     const cliprogress = require('cli-progress')
 
-    const filename = process.argv[2] || '/Users/josephg/Downloads/Takeout 3/Mail/devtest.mbox'
+    const filename = process.argv[2] || 'testcases/devtest.mbox'
     const {size} = fs.statSync(filename)
 
     const bar = new cliprogress.SingleBar({fps: 1}, cliprogress.Presets.shades_classic)
@@ -237,6 +237,6 @@ if (require.main === module) {
 }
 
 // console.log(process.argv)
-// chunkMBox(fs.createReadStream(process.argv[2] || '/Users/josephg/Downloads/Takeout 3/Mail/devtest.mbox', {
+// chunkMBox(fs.createReadStream(process.argv[2] || 'testcases/devtest.mbox', {
 //   encoding: 'utf8'
 // }))

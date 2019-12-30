@@ -64,7 +64,7 @@ const envelope_to_jmap = (mime_content, with_attachments) => {
     attachments = {}
     const blobid_ptr = Module._get_blob_space();
     for (const {blobId, name, size} of json.attachments) {
-      console.log('blob', blobId, name, size)
+      // console.log('blob', blobId, name, size)
       if (blobId.length !== 41) throw Error('unexpected blob length')
       const blob_buf = Buffer.from(blobId, 'ascii')
       Module.HEAPU8.set(blob_buf, blobid_ptr)
@@ -101,6 +101,7 @@ if (require.main === module) {
         const {json, attachments} = envelope_to_jmap(buf)
         // console.log(process.argv[i])
         // Module._leak_check()
+        console.dir(json)
       }
       // console.dir(json ? json : 'ERROR', {depth:null})
   
