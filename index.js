@@ -12,14 +12,27 @@ const assert = (cond, str) => {
   if (!cond) throw Error(str || 'assertion failed')
 }
 
+let is_ready = false
+
 const ready = new Promise((resolve) => {
-  Module.onRuntimeInitialized = resolve
+  Module.onRuntimeInitialized = () => {
+    Module._init()
+    is_ready = true
+    resolve()
+  }
 })
 
-function _arrayToHeap(jsbuf){
+const _arrayToHeap = (jsbuf) => {
   const numBytes = jsbuf.length
-  const ptr = Module._malloc(numBytes);
-  Module.HEAPU8.set(typeof jsbuf === 'string' ? Buffer.from(jsbuf, 'ascii') : jsbuf, ptr)
+  const ptr = Module._xmalloc(numBytes);
+  Module.HEAPU8.set(jsbuf, ptr)
+  return ptr
+}
+const _strToHeap = (str) => {
+  const numBytes = str.length + 1
+  const ptr = Module._xmalloc(numBytes);
+  Module.HEAPU8.set(Buffer.from(str, 'ascii'), ptr)
+  Module.HEAPU8[ptr + str.length] = 0
   return ptr
 }
 
@@ -28,14 +41,22 @@ const heapToBuf = (base, len) => {
   return Buffer.from(buf_slice) // Copy it
 }
 
+/* Options:
+  with_attachments: bool (default: false)
+  want_headers: string[] (default: none). Extra headers to parse on the root object
+  want_bodyheaders: string[] (default: none). Extra headers to parse on each body
+*/
+
 // mime_content is a buffer or a string
-const envelope_to_jmap = (mime_content, with_attachments) => {
+const envelope_to_jmap = (mime_content, opts = {}) => {
+  assert(is_ready, 'You must wait for wasm module to be ready before calling this')
+
   // const hash = crypto.createHash('sha1').update(mime_content).digest('hex')
   // console.log('SHA', hash, typeof mime_content === 'string' ? 'string' : Buffer.isBuffer(mime_content) ? 'buffer' : 'unknown', mime_content.length)
 
   if (typeof mime_content === 'string') mime_content = Buffer.from(mime_content)
 
-  assert(!Module._assert_no_leaks())
+  Module._start_leaktrace()
   // console.log(mime_content)
   
   // First create a cyrusmsg*
@@ -43,7 +64,7 @@ const envelope_to_jmap = (mime_content, with_attachments) => {
   // process.stderr.write('-----\n')
   const msg = Module._msg_parse(mime_ptr, mime_content.length)
   // console.log('ptr', mime_ptr, msg)
-  Module._free(mime_ptr)
+  Module._m_free(mime_ptr)
   if (msg === 0) {
     // Error handling message
     const hash = crypto.createHash('sha1').update(mime_content).digest('hex')
@@ -53,14 +74,21 @@ const envelope_to_jmap = (mime_content, with_attachments) => {
 
   // Ok now get JSON out
   // const json_str = Module.ccall('msg_to_json', 'string', ['number'], [msg])
-  const json_str_ptr = Module._msg_to_json(msg)
+
+  // console.log('x', opts.want_headers.join('\n'))
+  const want_headers = opts.want_headers ? _strToHeap(opts.want_headers.join('\n')) : 0
+  const want_bodyheaders = opts.want_bodyheaders ? _strToHeap(opts.want_bodyheaders.join('\n')) : 0
+  const json_str_ptr = Module._msg_to_json(msg, want_headers, want_bodyheaders)
   const json_str = Module.UTF8ToString(json_str_ptr)
   const json = JSON.parse(json_str)
+
+  if (want_headers) Module._m_free(want_headers)
+  if (want_bodyheaders) Module._m_free(want_bodyheaders)
   Module._m_free(json_str_ptr)
 
   // ... And the attachments!
   let attachments
-  if (with_attachments) {
+  if (opts.with_attachments) {
     attachments = {}
     const blobid_ptr = Module._get_blob_space();
     for (const {blobId, name, size} of json.attachments) {
@@ -76,8 +104,7 @@ const envelope_to_jmap = (mime_content, with_attachments) => {
 
   Module._msg_free(msg)
 
-  // Module._leak_check()
-  if (Module._assert_no_leaks()) {
+  if (Module._end_leaktrace_and_check()) {
     fs.writeFileSync('leaky.eml', mime_content)
     throw Error('Memory leak! Contents written to leaky.eml')
   }

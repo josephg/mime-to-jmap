@@ -543,7 +543,7 @@ enum _header_form {
 struct header_prop {
     char *lcasename;
     char *name;
-    const char *prop;
+    char *prop;
     enum _header_form form;
     int all;
 };
@@ -552,6 +552,7 @@ static void _header_prop_fini(struct header_prop *prop)
 {
     free(prop->lcasename);
     free(prop->name);
+    free(prop->prop);
 }
 
 static void _header_prop_free(struct header_prop *prop)
@@ -560,20 +561,13 @@ static void _header_prop_free(struct header_prop *prop)
     free(prop);
 }
 
-static struct header_prop *_header_parseprop(const char *s)
-{
-    strarray_t *fields = strarray_split(s + 7, ":", 0);
-    const char *f0, *f1, *f2;
-    int is_valid = 1;
-    enum _header_form form = HEADER_FORM_RAW;
-    char *lcasename = NULL, *name = NULL;
-
+static hash_table allowed_header_forms = HASH_TABLE_INITIALIZER;
+void init_header_parseprops() {
     /* Initialize allowed header forms by lower-case header name. Any
      * header in this map is allowed to be requested either as Raw
      * or the form of the map value (casted to void* because C...).
      * Any header not found in this map is allowed to be requested
      * in any form. */
-    static hash_table allowed_header_forms = HASH_TABLE_INITIALIZER;
     if (allowed_header_forms.size == 0) {
         /* TODO initialize with all headers in RFC5322 and RFC2369 */
         construct_hash_table(&allowed_header_forms, 32, 0);
@@ -609,6 +603,18 @@ static struct header_prop *_header_parseprop(const char *s)
         hash_insert("keywords", (void*) HEADER_FORM_TEXT, &allowed_header_forms);
         hash_insert("list-id", (void*) HEADER_FORM_TEXT, &allowed_header_forms);
     }
+}
+
+static struct header_prop *_header_parseprop(const char *s)
+{
+    strarray_t *fields = strarray_split(s + 7, ":", 0);
+    const char *f0, *f1, *f2;
+    int is_valid = 1;
+    enum _header_form form = HEADER_FORM_RAW;
+    char *lcasename = NULL, *name = NULL;
+
+    // If this hasn't already been called, init. Might flag spurious memory leaks though.
+    init_header_parseprops();
 
     /* Parse property string into fields */
     f0 = f1 = f2 = NULL;
@@ -666,11 +672,12 @@ static struct header_prop *_header_parseprop(const char *s)
         hprop = xzmalloc(sizeof(struct header_prop));
         hprop->lcasename = lcasename;
         hprop->name = name;
-        hprop->prop = s;
+        hprop->prop = xstrdup(s);
         hprop->form = form;
         hprop->all = f2 != NULL || (f1 && !strcmp(f1, "all"));
     }
     else {
+        // fprintf(stderr, "not valid\n");
         free(lcasename);
         free(name);
     }
@@ -4105,28 +4112,28 @@ static void _email_getargs_fini(struct email_getargs *args)
 //     return (rock->snoozed != NULL);
 // }
 
-static void _email_parse_wantheaders(json_t *jprops,
-                                     struct jmap_parser *parser,
-                                     const char *prop_name,
-                                     ptrarray_t *want_headers)
-{
-    size_t i;
-    json_t *jval;
-    json_array_foreach(jprops, i, jval) {
-        const char *s = json_string_value(jval);
-        if (!s || strncmp(s, "header:", 7))
-            continue;
-        struct header_prop *hprop;
-        if ((hprop = _header_parseprop(s))) {
-            ptrarray_append(want_headers, hprop);
-        }
-        else {
-            jmap_parser_push_index(parser, prop_name, i, s);
-            jmap_parser_invalid(parser, NULL);
-            jmap_parser_pop(parser);
-        }
-    }
-}
+// static void _email_parse_wantheaders(json_t *jprops,
+//                                      struct jmap_parser *parser,
+//                                      const char *prop_name,
+//                                      ptrarray_t *want_headers)
+// {
+//     size_t i;
+//     json_t *jval;
+//     json_array_foreach(jprops, i, jval) {
+//         const char *s = json_string_value(jval);
+//         if (!s || strncmp(s, "header:", 7))
+//             continue;
+//         struct header_prop *hprop;
+//         if ((hprop = _header_parseprop(s))) {
+//             ptrarray_append(want_headers, hprop);
+//         }
+//         else {
+//             jmap_parser_push_index(parser, prop_name, i, s);
+//             jmap_parser_invalid(parser, NULL);
+//             jmap_parser_pop(parser);
+//         }
+//     }
+// }
 
 void init_default_props()
 {
@@ -5430,8 +5437,37 @@ done:
 //     return r;
 // }
 
+// header_lines are separated by newlines ('\n').
+static void _parse_want_headers(char *header_lines, ptrarray_t *result) {
+    // Eg "header:X-Gmail-Labels:asText"
+    char *start = (char *)header_lines;
+    char *end;
 
-int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut) {
+    do {
+        end = strchr(start, '\n');
+
+        if (end != NULL) {
+            *end = '\0';
+        }
+
+        if (end == NULL || end - start > 1) { // Ignore any empty line at the end of input
+            struct header_prop *hprop;
+            if ((hprop = _header_parseprop(start))) {
+                ptrarray_append(result, hprop);
+            } else {
+                log_warning("Could not parse wanted header '%s'", start);
+            }
+        }
+
+        if (end != NULL) {
+            *end = '\n'; // Restore the string in case we want to reuse it.
+            start = end + 1;
+        }
+    } while (end != NULL);
+}
+
+int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut,
+        char *want_headers, char *want_bodyheaders) {
     struct email_getargs getargs = _EMAIL_GET_ARGS_INITIALIZER;
 
     // Basically we want everything we might want to store later.
@@ -5440,8 +5476,15 @@ int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut) {
     getargs.props = &_email_parse_default_props;
     getargs.bodyprops = &_email_get_default_bodyprops;
 
+    if (want_headers != NULL) _parse_want_headers(want_headers, &getargs.want_headers);
+    if (want_bodyheaders != NULL) _parse_want_headers(want_headers, &getargs.want_bodyheaders);
+
     getargs.fetch_all_body = 1;
-    return _email_from_msg(NULL, &getargs, msg, jsonOut);
+    int result = _email_from_msg(NULL, &getargs, msg, jsonOut);
+
+    _email_getargs_fini(&getargs);
+
+    return result;
 }
 
 // Buf must be at least 42 bytes long. (We write exactly 42 chars into it)

@@ -55,12 +55,14 @@
 
 struct cyrusmsg;
 
+void init_header_parseprops(); // TODO: Add a variant that frees this too.
 void init_default_props();
 void free_default_props();
 int cyrusmsg_from_buf(const struct buf *buf, struct cyrusmsg **msg);
 void cyrusmsg_fini(struct cyrusmsg **msgptr);
 
-int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut);
+int jmap_json_from_cyrusmsg(struct cyrusmsg *msg, json_t **jsonOut,
+        char *want_headers, char *want_bodyheaders);
 char *get_attachment_with_blobid(struct cyrusmsg *msg, const char *buf, size_t expected_size);
 
 // int jmap_email_from_buf(const struct buf *buf,

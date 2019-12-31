@@ -5,7 +5,12 @@ const file = fs.readFileSync(process.argv[2] || 'some.eml')
 
 // *** NOTE: Running this will actually save attachments in the named file to your hard disk.
 ready.then(() => {
-  const {json, attachments} = envelope_to_jmap(file, true)
+  const {json, attachments} = envelope_to_jmap(file, {
+    want_headers: ['header:X-Gmail-Labels:asText'],
+    with_attachments: true,
+  })
+
+  console.log('Gmail thread ids:', json['header:X-Gmail-Labels:asText'])
 
   // Attachments is a content-addressable map from blobId => Buffer with the attachment's contents.
   // Metadata about each attachment in json.attachments[blobId].{type, name, disposition, ...}.

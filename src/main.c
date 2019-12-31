@@ -25,7 +25,10 @@ void log_warning(const char *fmt, ...)
     va_start(args, fmt);
     buf_vprintf(&warn_out, fmt, args);
     buf_appendcstr(&warn_out, "\n");
-    vfprintf(stdout, fmt, args);
+
+    fwrite(buf_base(&warn_out), buf_len(&warn_out), 1, stderr);
+    fprintf(stderr, "\n");
+    // vfprintf(stderr, fmt, args);
     va_end(args);
 }
 
@@ -71,20 +74,22 @@ struct cyrusmsg *msg_parse(const char *mime_text, size_t len) {
     // return j;
 }
 
-
-int assert_no_leaks();
+EMSCRIPTEN_KEEPALIVE
+void init() {
+    init_default_props();
+    init_header_parseprops();
+}
 
 EMSCRIPTEN_KEEPALIVE
 void msg_free(struct cyrusmsg *msg) {
     cyrusmsg_fini(&msg);
     free_default_props();
-    assert_no_leaks();
 }
 
 EMSCRIPTEN_KEEPALIVE
-char *msg_to_json(struct cyrusmsg *msg) {
+char *msg_to_json(struct cyrusmsg *msg, char *want_headers, char *want_bodyheaders) {
     json_t *jsonOut;
-    int r = jmap_json_from_cyrusmsg(msg, &jsonOut);
+    int r = jmap_json_from_cyrusmsg(msg, &jsonOut, want_headers, want_bodyheaders);
     dump_log();
     if (r) {
         fprintf(stderr, "Error parsing MIME message to JSON %d\n", r);
@@ -110,6 +115,7 @@ const char *msg_get_blob(struct cyrusmsg *msg, char *blobId, size_t expectedSize
     return get_attachment_with_blobid(msg, blobId == NULL ? get_blob_space() : blobId, expectedSize);
 }
 
+// Needed to track allocations with the leak checker.
 EMSCRIPTEN_KEEPALIVE
 void m_free(void *ptr) { free(ptr); }
 
@@ -140,6 +146,10 @@ int main(int argc, char *argv[]) {
     }
     
     size_t num_read;
+
+    init();
+    start_leaktrace();
+
     // const size_t BUF_SIZE = 1024 * 8;
     // do {
     //     char chars[BUF_SIZE];
@@ -152,12 +162,14 @@ int main(int argc, char *argv[]) {
     // struct cyrusmsg *msg = msg_parse(buf_base(&buf), buf_len(&buf));
     char chars[1024*1024];
     num_read = fread(chars, 1, 1024*1024, f);
-    printf("size %zd\n", num_read);
+    // printf("size %zd\n", num_read);
     struct cyrusmsg *msg = msg_parse(chars, num_read);
     // buf_free(&buf);
     if (msg == NULL) return 1;
 
-    char *json = msg_to_json(msg);
+    // char fields[] = "header:X-Gmail-Labels:asText\nheader:X-GM-THRID:asText\nheader:Delivered-To:asAddresses";
+    char fields[] = "header:X-Gmail-Labels:asText";
+    char *json = msg_to_json(msg, fields, NULL);
     if (json == NULL) return 1;
     printf("%s\n", json);
     // _raw_free(json);
@@ -173,8 +185,8 @@ int main(int argc, char *argv[]) {
     msg_free(msg);
     free_default_props();
 
-    makedump_log();
-    assert_no_leaks();
+    // makedump_log();
+    end_leaktrace_and_check();
 
     // getchar();
     return 0;

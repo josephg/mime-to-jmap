@@ -92,8 +92,6 @@
 static int message_map_file(message_t *m, const char *fname);
 static int message_parse_cbodystructure(message_t *m);
 
-#define DEBUG 0
-
 /* Message being parsed */
 struct msg {
     const char *base;

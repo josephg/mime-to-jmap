@@ -73,4 +73,7 @@ extern void *xmemdup (const void *ptr, size_t size);
 extern void fatal(const char *fatal_message, int fatal_code)
    __attribute__ ((noreturn));
 
+extern void start_leaktrace();
+extern int end_leaktrace_and_check();
+
 #endif /* INCLUDED_XMALLOC_H */
