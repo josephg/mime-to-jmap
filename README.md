@@ -32,30 +32,16 @@ ready.then(() => {
 })
 ```
 
-By default, `envelope_to_jmap` will not parse out email attachments beyond text and HTML sections. To fetch attachments, pass `true` as the second argument. This will populate `attachments` in the return value, which is an object which maps blob IDs to the attachment data itself. Note the metadata for each attachment is returned through the regular JSON email body object.
+- **envelope_to_jmap(data: Buffer, opts?: Options) => {json, attachments?}**
 
-```javascript
-const {ready, envelope_to_jmap} = require('mime-to-jmap')
-const fs = require('fs')
+The main entrypoint for this library is `envelope_to_jmap()`. The method takes a buffer with the email data and an optional options object. If supplied, the options object takes the following fields:
 
-const file = fs.readFileSync('some.eml')
-
-// *** NOTE: Running this will actually save attachments in the named file to your hard disk.
-ready.then(() => {
-  const {json, attachments} = envelope_to_jmap(file, true)
-
-  // Attachments is a content-addressable map from blobId => Buffer with the attachment's contents.
-  // Metadata about each attachment in json.attachments[blobId].{type, name, disposition, ...}.
-
-  for (const {name, blobId, type} of json.attachments) {
-    const data = attachments[blobId]
-    console.log('Saving file', name, data.length, 'of type', type) // type is a mime type, eg 'image/jpeg'.
-    fs.writeFileSync('attachment_' + name, data) // name is the filename listed in the email
-  }
-})
-```
+- **attachments**: (*boolean*, default *false*) By default, `envelope_to_jmap` will not parse out email attachments beyond text and HTML sections. If the attachments flag is set, `envelope_to_jmap` will return an `arguments` field, which is an object mapping from blob IDs to the attachment data itself. Note the metadata for each attachment is returned through the regular JSON email body object. This data is attached separately to fit with the jmap data model. See [examples/extract_attachments.js](https://github.com/josephg/mime-to-jmap/blob/master/examples/extract_attachments.js) for an example of how to use this data in practice.
+- **want_headers**: (*string[]*, default *[]*) A list of extra custom headers for `envelope_to_jmap` to parse and return in the returned JSON object. Currently all raw headers are returned by default anyway, but the library can parse custom headers into standard objects for many types of data. For example, to fetch unsubscribe links, pass `['header:List-Unsubscribe:asURLs']` here and the corresponding header will be automatically extracted and decoded to URLs. Values extracted this way are put on the returned JMAP object using the supplied search string as their key. (Eg via `json['header:List-Unsubscribe:asURLs']`).
+- **want_bodyheaders**: (*string[]*, default *[]*) This is functionally the same as *want_headers* above, but instead of looking for headers on the root object, this looks for the named header in each body inside the email envelope.
 
 > *Note:* The returned object is slightly non-spec compliant as JMAP objects are expected to have a receivedAt date, but we can't calculate that value from the mime object alone. As a result, the `json.receivedAt` property will always be null on the returned object.
+
 
 ## Parsing emails in MBOX files
 
