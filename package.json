@@ -11,5 +11,10 @@
   },
   "optionalDependencies": {
     "cli-progress": "^3.4.0"
-  }
+  },
+  "files": [
+    "*.js",
+    "mimer.wasm",
+    "index.d.ts"
+  ]
 }
