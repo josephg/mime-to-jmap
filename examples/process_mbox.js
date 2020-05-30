@@ -1,4 +1,4 @@
-const {ready, mbox_each, mbox_to_eml, envelope_to_jmap} = require('..')
+const {ready, mbox_each, mbox_to_eml, envelope_to_jmap} = require('../dist')
 const fs = require('fs')
 
 process.on('unhandledRejection', e => {

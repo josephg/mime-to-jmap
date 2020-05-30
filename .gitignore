@@ -1,14 +1,10 @@
-Makefile
-CMakeFiles
 *.dSYM
-CMakeCache.txt
 .*.swp
+node_modules
 
 .vscode
 .DS_Store
-build
-mimer
-mimer.wasm
-mimer.js
 
-Makefile
+Debug
+Release
+dist

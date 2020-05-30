@@ -1,20 +1,25 @@
 {
   "name": "mime-to-jmap",
   "version": "1.0.0",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "repository": "git@github.com:josephg/mime-to-jmap.git",
   "author": "Seph Gentle <me@josephg.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^13.1.2"
+    "@types/node": "^14.0.6",
+    "typescript": "^3.9.3"
   },
   "optionalDependencies": {
     "cli-progress": "^3.4.0"
   },
+  "scripts": {
+    "prepare": "rm -rf dist && tsc -p . && make",
+    "prepublishOnly": "make Release"
+  },
   "files": [
-    "*.js",
-    "mimer.wasm",
-    "index.d.ts"
+    "dist/*.js",
+    "dist/*.d.ts",
+    "dist/*.wasm"
   ]
 }
