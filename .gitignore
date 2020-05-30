@@ -4,6 +4,11 @@ CMakeFiles
 CMakeCache.txt
 .*.swp
 
-
+.vscode
+.DS_Store
+build
 mimer
+mimer.wasm
+mimer.js
 
+Makefile

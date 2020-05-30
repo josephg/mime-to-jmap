@@ -18,6 +18,7 @@ process.on('unhandledRejection', e => {
     json.receivedAt = receivedAt
     
     console.log('Email', mboxFromAddress, 'from', json.from[0].name, 'subject', json.subject)
+    console.dir(json)
   }
 })()
 

@@ -122,10 +122,11 @@ static char *_decode_to_utf8(const char *charset,
     int enc = encoding_lookupname(encoding);
 
     if (cs == CHARSET_UNKNOWN_CHARSET || enc == ENCODING_UNKNOWN) {
-        log_warning("decode_to_utf8 error (%s, %s)", charset, encoding);
+        log_warning("decode_to_utf8 error: Unknown charset (%s, %s)", charset, encoding);
         *is_encoding_problem = 1;
         goto done;
     }
+    // printf("decode to utf8 - charset %s encoding %s\n", charset, encoding);
     text = charset_to_utf8(data, datalen, cs, enc);
     if (!text) {
         *is_encoding_problem = 1;
@@ -140,6 +141,7 @@ static char *_decode_to_utf8(const char *charset,
     if (!strncasecmp(charset_id, "UTF-32", 6)) {
         /* Special-handle UTF-32. Some clients announce the wrong endianess. */
         if (counts.invalid || counts.replacement) {
+            log_warning("invalid utf-32 detected");
             charset_t guess_cs = CHARSET_UNKNOWN_CHARSET;
             if (!strcasecmp(charset_id, "UTF-32") || !strcasecmp(charset_id, "UTF-32BE"))
                 guess_cs = charset_lookupname("UTF-32LE");

@@ -53,10 +53,12 @@
 #include "htmlchar.h"
 #include "util.h"
 
+// #ifndef USE_EMSCRIPTEN
 #include <unicode/ucnv.h>
 #include <unicode/ustring.h>
 #include <unicode/unorm2.h>
 #include <unicode/utf8.h>
+// #endif
 
 #define U_REPLACEMENT   0xfffd
 
@@ -2741,65 +2743,65 @@ EXPORTED int charset_searchstring(const char *substr, comp_pat *pat,
  * content transfer encoding of the data, respectively.
  * Returns nonzero iff the string was found.
  */
-EXPORTED int charset_searchfile(const char *substr, comp_pat *pat,
-                       const char *msg_base, size_t len,
-                       charset_t charset, int encoding, int flags)
-{
-    struct convert_rock *input, *tosearch;
-    size_t i;
-    int res;
-    charset_t utf8;
+// EXPORTED int charset_searchfile(const char *substr, comp_pat *pat,
+//                        const char *msg_base, size_t len,
+//                        charset_t charset, int encoding, int flags)
+// {
+//     struct convert_rock *input, *tosearch;
+//     size_t i;
+//     int res;
+//     charset_t utf8;
 
-    /* Initialize character set mapping */
-    if (charset == CHARSET_UNKNOWN_CHARSET) return 0;
+//     /* Initialize character set mapping */
+//     if (charset == CHARSET_UNKNOWN_CHARSET) return 0;
 
-    /* check for trivial search */
-    if (strlen(substr) == 0)
-        return 1;
+//     /* check for trivial search */
+//     if (strlen(substr) == 0)
+//         return 1;
 
-    /* set up the conversion path */
-    utf8 = charset_lookupname("utf-8");
-    tosearch = search_init(substr, pat);
-    input = convert_init(utf8, 0/*to_uni*/, tosearch);
-    input = canon_init(flags, input);
-    input = convert_init(charset, 1/*to_uni*/, input);
+//     /* set up the conversion path */
+//     utf8 = charset_lookupname("utf-8");
+//     tosearch = search_init(substr, pat);
+//     input = convert_init(utf8, 0/*to_uni*/, tosearch);
+//     input = canon_init(flags, input);
+//     input = convert_init(charset, 1/*to_uni*/, input);
 
-    /* choose encoding extraction if needed */
-    switch (encoding) {
-    case ENCODING_NONE:
-        break;
+//     /* choose encoding extraction if needed */
+//     switch (encoding) {
+//     case ENCODING_NONE:
+//         break;
 
-    case ENCODING_QP:
-        input = qp_init(0, input);
-        break;
+//     case ENCODING_QP:
+//         input = qp_init(0, input);
+//         break;
 
-    case ENCODING_BASE64:
-        input = b64_init(input);
-        /* XXX have to have nl-mapping base64 in order to
-         * properly count \n as 2 raw characters
-         */
-        break;
+//     case ENCODING_BASE64:
+//         input = b64_init(input);
+//         /* XXX have to have nl-mapping base64 in order to
+//          * properly count \n as 2 raw characters
+//          */
+//         break;
 
-    default:
-        /* Don't know encoding--nothing can match */
-        convert_free(input);
-        charset_free(&utf8);
-        return 0;
-    }
+//     default:
+//         /* Don't know encoding--nothing can match */
+//         convert_free(input);
+//         charset_free(&utf8);
+//         return 0;
+//     }
 
-    /* implement the loop here so we can check on the search each time */
-    for (i = 0; i < len; i++) {
-        convert_putc(input, (unsigned char)msg_base[i]);
-        if (search_havematch(tosearch)) break;
-    }
+//     /* implement the loop here so we can check on the search each time */
+//     for (i = 0; i < len; i++) {
+//         convert_putc(input, (unsigned char)msg_base[i]);
+//         if (search_havematch(tosearch)) break;
+//     }
 
-    res = search_havematch(tosearch); /* copy before we free it */
+//     res = search_havematch(tosearch); /* copy before we free it */
 
-    convert_free(input);
-    charset_free(&utf8);
+//     convert_free(input);
+//     charset_free(&utf8);
 
-    return res;
-}
+//     return res;
+// }
 
 /* This is based on charset_searchfile above. */
 EXPORTED int charset_extract(void (*cb)(const struct buf *, void *),

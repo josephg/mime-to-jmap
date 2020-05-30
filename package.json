@@ -6,8 +6,8 @@
   "repository": "git@github.com:josephg/mime-to-jmap.git",
   "author": "Seph Gentle <me@josephg.com>",
   "license": "MIT",
-  "dependencies": {
-    "libmime": "^4.2.1"
+  "devDependencies": {
+    "@types/node": "^13.1.2"
   },
   "optionalDependencies": {
     "cli-progress": "^3.4.0"
