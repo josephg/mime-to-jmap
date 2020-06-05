@@ -273,6 +273,10 @@ int end_leaktrace_and_check() {
 
         for (int i = 0; i < held_used; i++) {
             fprintf(stderr, "leaked %zd %p\n", held[i].size, held[i].ptr);
+            // for (int c = 0; c < held[i].size; c++) {
+            //     fprintf(stderr, "%c", ((char *)held[i].ptr)[c]);
+            // }
+            // fprintf(stderr, "\n");
         }
 
         return 1;

@@ -63,6 +63,7 @@ export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferVie
       start = endPos
       return b
     } else {
+      // Just return a slice from the original chunk set.
       const b = chunks[0].subarray(start, endPos)
       progress += endPos - start
       start = endPos
@@ -183,13 +184,13 @@ const mboxrd_trim_from = (buf: Uint8Array, startIdx: number) => {
     // console.log('trim', shift, copyTo)
   }
 
-  return buf.slice(startIdx, buf.length - shift)
+  return buf.subarray(startIdx, buf.length - shift)
 }
 
 const NEWLINE = '\n'.charCodeAt(0)
 const dec = new TextDecoder()
-export const mbox_to_eml = (_mbox_buf: ArrayBufferView) => {
-  const mbox_buf = as_uint8_array(_mbox_buf)
+export const mbox_to_eml = (_mbox_buf: ArrayBufferView, destructive = false) => {
+  let mbox_buf = as_uint8_array(_mbox_buf)
   
   // The mbox string always starts with 'From '
   
@@ -214,6 +215,7 @@ export const mbox_to_eml = (_mbox_buf: ArrayBufferView) => {
   // Now we need to find \r\n>*From and remove one of the > characters.
   // I want to keep the data as a buffer, so I'm doing this the old fashioned way.
   // Could pretty easily do this in C instead.
+  if (!destructive) mbox_buf = mbox_buf.slice()
   const body = mboxrd_trim_from(mbox_buf, end_line_1 + 1)
   // console.log(body.toString())
 

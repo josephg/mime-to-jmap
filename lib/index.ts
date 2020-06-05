@@ -1,5 +1,5 @@
 
-const Module = require("./cyrus.js") as ModuleType
+const modFn = require("./cyrus.js") as () => Promise<ModuleType>
 
 type ptr = number
 
@@ -42,7 +42,7 @@ interface ModuleType {
 
 // Module['ASAN_OPTIONS'] = 'detect_stack_use_after_return=1'
 // Module['ASAN_OPTIONS'] = 'detect_leaks=1,print_stats=1,verbose=1,atexit=1'
-Module['ASAN_OPTIONS'] = 'print_stats=1'
+// Module['ASAN_OPTIONS'] = 'print_stats=1'
 //const to_jmap = Module.cwrap('to_jmap', 'string', ['string'])
 
 //console.log(process.argv)
@@ -53,12 +53,15 @@ const assert = (cond: any, str?: string) => {
 
 let is_ready = false
 
+let Module: ModuleType | undefined
+
 export const ready = new Promise((resolve) => {
-  Module.onRuntimeInitialized = () => {
-    Module._init()
+  modFn().then(mod => {
+    Module = mod
     is_ready = true
-    resolve()
-  }
+    mod._init()
+    resolve(mod)
+  })
 })
 
 // const _arrayToHeap = (jsbuf) => {
@@ -68,14 +71,14 @@ export const ready = new Promise((resolve) => {
 //   return ptr
 // }
 const _strToHeap = (str: string) => {
-  const numBytes = Module.lengthBytesUTF8(str) + 1
-  const ptr = Module._xmalloc(numBytes)
-  Module.stringToUTF8(str, ptr, numBytes)
+  const numBytes = Module!.lengthBytesUTF8(str) + 1
+  const ptr = Module!._xmalloc(numBytes)
+  Module!.stringToUTF8(str, ptr, numBytes)
   return ptr
 }
 
 const copyFromHeap = (base: number, len: number) => {
-  return Module.HEAPU8.buffer.slice(base, base + len) // Returns an ArrayBuffer.
+  return Module!.HEAPU8.buffer.slice(base, base + len) // Returns an ArrayBuffer.
 }
 // const heapToBuf = (base, len) => {
 //   const buf_slice = Buffer.from(Module.HEAPU8.buffer, base, len)
@@ -99,7 +102,7 @@ export interface JMAPMailOpts {
 
 // mime_content is an arraybuffer, node buffer, data view or a string. (node buffers conform to ArrayBufferView.)
 export const envelope_to_jmap = (mime_content: string | ArrayBuffer | ArrayBufferView, opts: JMAPMailOpts = {}) => {
-  assert(is_ready, 'You must wait for wasm module to be ready before calling this')
+  if (!Module) throw Error('You must wait for wasm module to be ready before calling this')
 
   // const hash = crypto.createHash('sha1').update(mime_content).digest('hex')
   // console.log('SHA', hash, typeof mime_content === 'string' ? 'string' : Buffer.isBuffer(mime_content) ? 'buffer' : 'unknown', mime_content.length)
@@ -181,7 +184,7 @@ export const envelope_to_jmap = (mime_content: string | ArrayBuffer | ArrayBuffe
   return {json, attachments}
 }
 
-export * from './mbox_utils'
+export {mbox_each, mbox_each_progress, mbox_to_eml} from './mbox_utils'
 
 // module.exports = {
 //   ready,

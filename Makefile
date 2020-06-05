@@ -1,4 +1,7 @@
-.PHONY: Debug Release clean
+.PHONY: Debug Release debug release clean
+
+debug: Debug
+release: Release
 
 Debug Release:
 	mkdir -p $@
