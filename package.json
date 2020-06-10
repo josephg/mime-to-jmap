@@ -1,6 +1,6 @@
 {
   "name": "mime-to-jmap",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "browser": "dist/index.web.js",
   "types": "dist/index.d.ts",
