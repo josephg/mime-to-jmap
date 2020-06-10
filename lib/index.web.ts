@@ -1,7 +1,7 @@
 import { ModuleType } from "./cyrus_type";
 import { _setMod } from "./wasm_wrap";
 
-const modFn = require('./cyrus.js') as () => Promise<ModuleType>
+const modFn = require('./cyrus.web.js') as () => Promise<ModuleType>
 
 export const ready = new Promise((resolve) => {
   modFn().then(mod => {

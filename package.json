@@ -2,6 +2,7 @@
   "name": "mime-to-jmap",
   "version": "0.1.0",
   "main": "dist/index.js",
+  "browser": "dist/index.web.js",
   "types": "dist/index.d.ts",
   "repository": "git@github.com:josephg/mime-to-jmap.git",
   "author": "Seph Gentle <me@josephg.com>",
@@ -14,8 +15,7 @@
     "cli-progress": "^3.4.0"
   },
   "scripts": {
-    "prepare": "rm -rf dist && tsc -p . && make",
-    "prepublishOnly": "make Release"
+    "prepare": "rm -rf dist && tsc -p . && make"
   },
   "files": [
     "dist/*.js",

@@ -11,14 +11,13 @@ file(GLOB JANSSON_SOURCES jansson/*.c)
 
 add_executable(cyrus ${SOURCES} ${JANSSON_SOURCES})
 
-#include(CMakeFindDependencyMacro)
-#find_dependency(jansson REQUIRED CONFIG)
-
 target_include_directories(cyrus PRIVATE
   # src jansson
   src jansson /Users/josephg/3rdparty/icu/icu4c/source/common
   # src jansson /usr/local/opt/icu4c/include
 )
+
+set(WASM_ENVIRONMENT "" CACHE STRING "Environment")
 
 set(WASM_OPT "-flto -Oz -s WASM_OBJECT_FILES=0 -fvisibility=hidden -s FILESYSTEM=0")
 
@@ -30,9 +29,11 @@ set(WASM_LDFLAGS "SHELL:-s TOTAL_MEMORY=64MB -s EXTRA_EXPORTED_RUNTIME_METHODS='
   \"lengthBytesUTF8\", \
   \"stringToUTF8\", \
   \"UTF8ToString\" \
-]' -s ALLOW_MEMORY_GROWTH -s MODULARIZE=1 ")
+]' -s ALLOW_MEMORY_GROWTH -s MODULARIZE=1 ${WASM_ENVIRONMENT} ")
 #  -s ENVIRONMENT=node
 #  -s FILESYSTEM=0
+#  -s USE_ICU=1 # - broken at the moment.
+
 
 set(CMAKE_C_FLAGS_DEBUG "-g -s ASSERTIONS=1 -s EXIT_RUNTIME -DDEBUG ")
 set(CMAKE_LD_FLAGS_DEBUG "-g -s ASSERTIONS=1 -s EXIT_RUNTIME ")
@@ -45,22 +46,19 @@ set(CMAKE_LD_FLAGS_RELEASE ${WASM_OPT})
 
 target_compile_options(cyrus PRIVATE
   "-DHAVE_CONFIG_H"
-#  -Oz
 #  -fsanitize=address -fno-omit-frame-pointer -fno-common 
-#  ${WASM_OPT}
  ${WASM_CFLAGS}
 )
 
 target_link_options(cyrus PRIVATE
   # -fsanitize=address -fno-omit-frame-pointer -fno-common 
-#  ${WASM_OPT}
  ${WASM_LDFLAGS}
 )
 
 target_link_libraries(cyrus
   # icuuc
-  # /Users/josephg/3rdparty/icu/icu4c/source/lib/libicuuc.a /Users/josephg/3rdparty/icu/icu4c/source/lib/libicudata.a
-  /Users/josephg/3rdparty/icu/icu4c/source/lib-wasm/libicuuc.a /Users/josephg/3rdparty/icu/icu4c/source/lib-wasm/libicudata.a
+  /Users/josephg/3rdparty/icu/icu4c/source/lib/libicuuc.a /Users/josephg/3rdparty/icu/icu4c/source/lib/libicudata.a
+  # /Users/josephg/3rdparty/icu/icu4c/source/lib-wasm/libicuuc.a /Users/josephg/3rdparty/icu/icu4c/source/lib-wasm/libicudata.a
 )
 
 #find_package(icu4c 64.2 

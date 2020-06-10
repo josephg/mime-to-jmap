@@ -16,8 +16,6 @@ export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferVie
   // We're scanning for the byte range '\nFrom ', which is [0a 46 72 6f 6d 20].
   let start = 0
   let chunks: Uint8Array[] = [] // After the first iteration length >= 1.
-  let rbuf = new Uint8Array(6) // ring buffer with the last 6 bytes in the prev chunk
-  let rnextidx = 0
 
   let progress = 0
 
@@ -71,7 +69,9 @@ export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferVie
     }
   }
 
-  // debugger
+  let rbuf = new Uint8Array(6) // ring buffer with the last 6 bytes in the prev chunk
+  let rnextidx = 0
+
   for await (const newChunk of readable) {
     // console.log('chunk', newChunk.length)
     // body += chunk
@@ -79,8 +79,11 @@ export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferVie
     chunks.push(view)
 
     // Scan for '\nFrom ' in the chunk list
+    // let ci = 0
+    // while (ci < view.byteLength) {
     for (let ci = 0; ci < view.byteLength; ci++) {
       rbuf[rnextidx] = view[ci]
+      // console.log('pos', ci, 'rbuf', rbuf)
       if (rbuf[rnextidx] === 0x20
         && rbuf[(rnextidx+1)%6] === 0x0a
         && rbuf[(rnextidx+2)%6] === 0x46
