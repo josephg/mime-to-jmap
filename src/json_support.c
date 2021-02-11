@@ -44,7 +44,9 @@
 
 // #include <config.h>
 
+#define _XOPEN_SOURCE // needed for strptime on linux for some reason.
 #include <string.h>
+
 #include <time.h>
 
 #include "json_support.h"

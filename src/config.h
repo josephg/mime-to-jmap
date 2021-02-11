@@ -25,7 +25,9 @@
 #define HAVE_LIBUUID
 
 // Macos
+#if !__linux__
 #define HAVE_STRLCPY 1
+#endif
 
 #define HAVE_VISIBILITY 1
 
