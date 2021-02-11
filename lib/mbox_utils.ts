@@ -12,7 +12,7 @@ const as_uint8_array = (buf: ArrayBufferView) => (
     : new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
 )
 
-export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferView>) {
+export async function* mbox_each_progress(readable: AsyncIterable<ArrayBufferView> | Iterable<ArrayBufferView>) {
   // We're scanning for the byte range '\nFrom ', which is [0a 46 72 6f 6d 20].
   let start = 0
   let chunks: Uint8Array[] = [] // After the first iteration length >= 1.

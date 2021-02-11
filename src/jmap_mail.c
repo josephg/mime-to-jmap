@@ -4373,9 +4373,8 @@ int cyrusmsg_from_buf(const struct buf *inputBuf, struct cyrusmsg **msgptr)
         Pre-run compliance check. This is very strict, and fails with \n
         instead of \r\n - which pipermail produces.
     */
-    int r = message_copy_strict(pr, /*to*/NULL, buf_len(&buf), /*allow_null*/1);
+    int r = message_copy_strict(pr, /*to*/NULL, buf_len(&buf), /*allow_null*/0);
     if (r) goto done;
-    // int r;
 
     /* Parse message */
     /*int*/ r = message_parse_mapped(buf_base(&buf), buf_len(&buf), mybody);
